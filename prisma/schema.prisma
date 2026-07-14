@@ -1,0 +1,44 @@
+// Prisma-Schema — hier definierst du, wie deine Datenbank aussieht.
+// Nach Änderungen: `npx prisma migrate dev --name <beschreibung>` ausführen.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Ein Benutzerkonto. Das Passwort wird niemals im Klartext gespeichert,
+// sondern nur als bcrypt-Hash (siehe passwordHash).
+model User {
+  id           String        @id @default(cuid())
+  name         String?
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+// Einnahme oder Ausgabe.
+enum TransactionType {
+  INCOME // Einnahme
+  EXPENSE // Ausgabe
+}
+
+// Eine einzelne Buchung, fest an einen User gebunden.
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  description String
+  date        DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
