@@ -14,31 +14,107 @@ datasource db {
 // Ein Benutzerkonto. Das Passwort wird niemals im Klartext gespeichert,
 // sondern nur als bcrypt-Hash (siehe passwordHash).
 model User {
-  id           String        @id @default(cuid())
-  name         String?
-  email        String        @unique
-  passwordHash String
-  createdAt    DateTime      @default(now())
-  transactions Transaction[]
+  id              String           @id @default(cuid())
+  name            String?
+  email           String           @unique
+  passwordHash    String
+  createdAt       DateTime         @default(now())
+  months          Month[]
+  tagesgeldBlocks TagesgeldBlock[]
 }
 
-// Einnahme oder Ausgabe.
-enum TransactionType {
-  INCOME // Einnahme
-  EXPENSE // Ausgabe
+// Ein Abschnitt/Block innerhalb eines Monats. Bildet das Excel-Layout ab:
+// Geldeingang, die drei Ausgaben-Spalten und die Abzüge unter dem Restbetrag.
+enum Section {
+  INCOME // Geldeingang
+  FIXKOSTEN // Ausgaben – Fixkosten
+  ALLTAG // Ausgaben – Einkäufe / Essen / Leben
+  LUXUS // Ausgaben – Luxus
+  RUECKLAGE // Abzüge unter dem Restbetrag (z. B. Tagesgeld, ETF)
 }
 
-// Eine einzelne Buchung, fest an einen User gebunden.
-model Transaction {
-  id          String          @id @default(cuid())
-  amount      Decimal         @db.Decimal(12, 2)
-  type        TransactionType
-  description String
-  date        DateTime        @default(now())
-  createdAt   DateTime        @default(now())
+// Ein Budget-Monat ODER die Vorlage (isTemplate = true). Beide sind nur
+// Container für Einträge; die Vorlage hat kein Jahr/Monat (year/month = null)
+// und dient als Grundlage für jeden neuen Monat.
+model Month {
+  id         String   @id @default(cuid())
+  year       Int? // null => Vorlage
+  month      Int? // 1..12, null => Vorlage
+  isTemplate Boolean  @default(false)
+  // true, sobald der Nutzer in diesem Monat selbst eine Zeile ändert. Nur
+  // unberührte (customized = false) Monate werden von Vorlagen-Änderungen
+  // automatisch mitgezogen – so gehen manuelle Eingaben nie verloren.
+  customized Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries Entry[]
+
+  // Verhindert doppelte echte Monate. Für die Vorlage (year/month = null)
+  // greift der Constraint in Postgres nicht – dort sorgt die App-Logik dafür,
+  // dass pro User nur eine Vorlage existiert.
+  @@unique([userId, year, month])
+  @@index([userId])
+}
+
+// Eine einzelne Zeile in einem Block, z. B. „Miete – 451,00 €".
+model Entry {
+  id        String   @id @default(cuid())
+  section   Section
+  label     String
+  amount    Decimal  @db.Decimal(12, 2)
+  // Optionale Rechenformel (z. B. „=60+30"). Wird beim Bearbeiten wieder
+  // angezeigt; beim Verlassen des Feldes zeigt die App nur das Ergebnis.
+  formula   String?
+  position  Int      @default(0) // Reihenfolge innerhalb des Abschnitts
+  createdAt DateTime @default(now())
+
+  monthId String
+  month   Month  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@index([monthId])
+}
+
+// -----------------------------------------------------------------------------
+// Tagesgeld-Seite (Phase 2)
+// -----------------------------------------------------------------------------
+
+// Art eines Tagesgeld-Blocks. Die ersten drei sind Standardblöcke (einer je
+// User); CUSTOM sind frei erstell-/löschbare Blöcke (z. B. ETF, Aktien, Krypto),
+// die den Saldo NICHT beeinflussen.
+enum TagesgeldKind {
+  EINNAHMEN // pro Jahr, Einnahmen + Zinsen
+  AUSGABEN // Gesamtausgaben des Kontos
+  ZURUECKGELEGT // zurückgelegte Beträge (Urlaub, Geschenke)
+  CUSTOM // frei angelegte Blöcke, saldoneutral
+}
+
+model TagesgeldBlock {
+  id        String           @id @default(cuid())
+  kind      TagesgeldKind
+  name      String
+  position  Int              @default(0)
+  createdAt DateTime         @default(now())
+  entries   TagesgeldEntry[]
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model TagesgeldEntry {
+  id        String   @id @default(cuid())
+  label     String
+  amount    Decimal  @db.Decimal(12, 2)
+  formula   String? // optionale Rechenformel, analog zu Entry.formula
+  year      Int? // nur für EINNAHMEN relevant (Jahresfilter); sonst null
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  blockId String
+  block   TagesgeldBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([blockId])
 }
