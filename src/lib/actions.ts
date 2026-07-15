@@ -394,3 +394,176 @@ export async function deleteCustomBlock(formData: FormData) {
 
   revalidateTagesgeld();
 }
+
+// ---------------------------------------------------------------------------
+// Profil (Anzeigename, E-Mail, Passwort, Konto löschen)
+// ---------------------------------------------------------------------------
+
+// Rückgabetyp für die Profil-Formulare (mit useActionState). Genau eins von
+// beiden ist gesetzt: ok = Erfolgsmeldung, error = Fehlermeldung.
+export type ProfileFormState = { ok?: string; error?: string };
+
+const NameSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Bitte gib einen Namen an.")
+    .max(80, "Der Name darf höchstens 80 Zeichen haben."),
+});
+
+export async function updateProfileName(
+  _prev: ProfileFormState,
+  formData: FormData,
+): Promise<ProfileFormState> {
+  const userId = await requireUserId();
+
+  const parsed = NameSchema.safeParse({ name: formData.get("name") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { name: parsed.data.name },
+  });
+
+  // Der Anzeigename wird im Dashboard-Header aus der DB gelesen.
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/profil");
+  return { ok: "Anzeigename gespeichert." };
+}
+
+const EmailSchema = z.object({
+  email: z.string().trim().email("Bitte gib eine gültige E-Mail-Adresse an."),
+  password: z.string().min(1, "Bitte bestätige die Änderung mit deinem Passwort."),
+});
+
+export async function updateEmail(
+  _prev: ProfileFormState,
+  formData: FormData,
+): Promise<ProfileFormState> {
+  const userId = await requireUserId();
+
+  const parsed = EmailSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, passwordHash: true },
+  });
+  if (!user) redirect("/login");
+
+  const passwordsMatch = await bcrypt.compare(
+    parsed.data.password,
+    user.passwordHash,
+  );
+  if (!passwordsMatch) return { error: "Das Passwort ist falsch." };
+
+  if (parsed.data.email === user.email) {
+    return { error: "Das ist bereits deine E-Mail-Adresse." };
+  }
+
+  const taken = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: { id: true },
+  });
+  if (taken) return { error: "Diese E-Mail-Adresse ist bereits vergeben." };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { email: parsed.data.email },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/profil");
+  return { ok: "E-Mail-Adresse geändert. Beim nächsten Login gilt die neue Adresse." };
+}
+
+const PasswordSchema = z
+  .object({
+    current: z.string().min(1, "Bitte gib dein aktuelles Passwort ein."),
+    next: z.string().min(8, "Das neue Passwort muss mindestens 8 Zeichen haben."),
+    confirm: z.string(),
+  })
+  .refine((d) => d.next === d.confirm, {
+    message: "Die neuen Passwörter stimmen nicht überein.",
+    path: ["confirm"],
+  });
+
+export async function updatePassword(
+  _prev: ProfileFormState,
+  formData: FormData,
+): Promise<ProfileFormState> {
+  const userId = await requireUserId();
+
+  const parsed = PasswordSchema.safeParse({
+    current: formData.get("current"),
+    next: formData.get("next"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+  if (!user) redirect("/login");
+
+  const currentMatches = await bcrypt.compare(
+    parsed.data.current,
+    user.passwordHash,
+  );
+  if (!currentMatches) return { error: "Das aktuelle Passwort ist falsch." };
+
+  const passwordHash = await bcrypt.hash(parsed.data.next, 10);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+
+  return { ok: "Passwort geändert." };
+}
+
+const DeleteAccountSchema = z.object({
+  password: z.string().min(1, "Bitte bestätige mit deinem Passwort."),
+});
+
+export async function deleteAccount(
+  _prev: ProfileFormState,
+  formData: FormData,
+): Promise<ProfileFormState> {
+  const userId = await requireUserId();
+
+  const parsed = DeleteAccountSchema.safeParse({
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+  if (!user) redirect("/login");
+
+  const passwordsMatch = await bcrypt.compare(
+    parsed.data.password,
+    user.passwordHash,
+  );
+  if (!passwordsMatch) return { error: "Das Passwort ist falsch." };
+
+  // Löscht den User; Monate, Einträge und Tagesgeld-Blöcke werden per
+  // onDelete: Cascade automatisch mitgelöscht.
+  await prisma.user.delete({ where: { id: userId } });
+
+  await signOut({ redirectTo: "/login" });
+  return {}; // nicht erreichbar – signOut leitet um
+}
