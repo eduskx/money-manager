@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
+/* Klassenbasierter Dark-Mode (Tailwind v4): `dark:`-Utilities greifen, sobald
+   <html> die Klasse `dark` trägt. Gesetzt wird sie per Inline-Script im Layout
+   (aus localStorage bzw. Systempräferenz) – so gibt es kein Umschalt-Flackern. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -11,13 +21,6 @@
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
