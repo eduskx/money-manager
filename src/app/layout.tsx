@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { InlineScript } from "@/components/InlineScript";
 
 export const metadata: Metadata = {
   title: "Money Manager",
@@ -19,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="de" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <InlineScript html={themeInitScript} />
       </head>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>

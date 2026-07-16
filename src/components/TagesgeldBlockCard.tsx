@@ -4,6 +4,7 @@ import { formatEuro } from "@/lib/format";
 import type { TagesgeldEntryView } from "@/lib/tagesgeld";
 import { TagesgeldEntryRow } from "@/components/TagesgeldEntryRow";
 import { TagesgeldAddEntry } from "@/components/TagesgeldAddEntry";
+import { TagesgeldBlockName } from "@/components/TagesgeldBlockName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconTrash } from "@/components/icons";
 
@@ -19,6 +20,7 @@ export function TagesgeldBlockCard({
   addYear = null,
   headerRight,
   deletable = false,
+  editableName = false,
 }: {
   title: string;
   blockId: string;
@@ -28,18 +30,23 @@ export function TagesgeldBlockCard({
   addYear?: number | null;
   headerRight?: ReactNode;
   deletable?: boolean;
+  editableName?: boolean; // eigene Blöcke: Name direkt im Kopf bearbeitbar
 }) {
   return (
     <section className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <header
         className={`flex h-14 items-center justify-between gap-2 rounded-t-2xl px-4 ${headerAccent}`}
       >
-        <h2
-          title={title}
-          className="truncate text-sm font-bold uppercase tracking-wide"
-        >
-          {title}
-        </h2>
+        {editableName ? (
+          <TagesgeldBlockName blockId={blockId} name={title} />
+        ) : (
+          <h2
+            title={title}
+            className="truncate text-sm font-bold uppercase tracking-wide"
+          >
+            {title}
+          </h2>
+        )}
         <div className="flex shrink-0 items-center gap-1">
           {headerRight}
           {deletable && (

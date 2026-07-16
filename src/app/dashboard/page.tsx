@@ -6,10 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { deleteAllMonths, deleteCurrentMonth } from "@/lib/actions";
 import {
   computeTotals,
-  getEntriesBySection,
+  flattenEntries,
   getOrCreateMonth,
   isMonthAfter,
   loadMonthChain,
+  loadMonthView,
   maxSelectableMonth,
   monthKey,
 } from "@/lib/month";
@@ -55,7 +56,7 @@ export default async function DashboardPage({
 
   // Monat holen oder aus der Vorlage anlegen.
   const budgetMonth = await getOrCreateMonth(session.user.id, year, month);
-  const grouped = await getEntriesBySection(budgetMonth.id);
+  const view = await loadMonthView(budgetMonth.id);
 
   // Ganze Monatskette durchrechnen -> liefert den dynamischen „Saldo aus
   // Vormonat" (carry) sowie income/restbetrag inkl. Übertrag.
@@ -63,7 +64,7 @@ export default async function DashboardPage({
   const comp =
     chain.get(monthKey(year, month)) ??
     // Fallback (sollte nach getOrCreateMonth nicht vorkommen): ohne Übertrag.
-    { ...computeTotals(Object.values(grouped).flat()), carry: 0, hasPrev: false };
+    { ...computeTotals(flattenEntries(view)), carry: 0, hasPrev: false };
 
   // Anzeigename frisch aus der DB, damit Profil-Änderungen sofort erscheinen.
   const profile = await prisma.user.findUnique({
@@ -148,7 +149,7 @@ export default async function DashboardPage({
         <div className="mt-6">
           <BudgetBoard
             monthId={budgetMonth.id}
-            grouped={grouped}
+            view={view}
             totals={comp}
             carry={comp.hasPrev ? comp.carry : null}
           />

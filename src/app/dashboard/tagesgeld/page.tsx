@@ -23,11 +23,14 @@ export default async function TagesgeldPage({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  // Jahr aus der URL; weiter als das echte aktuelle Jahr geht es nicht.
+  const maxYear = new Date().getFullYear();
   const sp = await searchParams;
   let year = Number(sp.year);
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    year = new Date().getFullYear();
+    year = maxYear;
   }
+  if (year > maxYear) redirect(`/dashboard/tagesgeld?year=${maxYear}`);
 
   const blocks = await getOrCreateTagesgeldBlocks(session.user.id);
   const totals = computeTagesgeldTotals(blocks);
@@ -37,10 +40,10 @@ export default async function TagesgeldPage({
   const zurueck = blocks.find((b) => b.kind === TagesgeldKind.ZURUECKGELEGT);
   const customBlocks = blocks.filter((b) => b.kind === TagesgeldKind.CUSTOM);
 
-  // Einnahmen werden pro Jahr angezeigt (Saldo zählt aber alle Jahre).
-  const einnahmenYear = (einnahmen?.entries ?? []).filter(
-    (e) => e.year === year,
-  );
+  // Einnahmen und Ausgaben werden pro Jahr angezeigt – der Saldo zählt aber
+  // weiterhin alle Jahre zusammen.
+  const einnahmenYear = (einnahmen?.entries ?? []).filter((e) => e.year === year);
+  const ausgabenYear = (ausgaben?.entries ?? []).filter((e) => e.year === year);
 
   const saldoPositive = totals.saldo >= 0;
 
@@ -120,7 +123,7 @@ export default async function TagesgeldPage({
               sum={sumEntries(einnahmenYear)}
               headerAccent="bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200"
               addYear={year}
-              headerRight={<YearSwitcher year={year} />}
+              headerRight={<YearSwitcher year={year} maxYear={maxYear} />}
             />
           )}
 
@@ -128,9 +131,11 @@ export default async function TagesgeldPage({
             <TagesgeldBlockCard
               title="Ausgaben"
               blockId={ausgaben.id}
-              entries={ausgaben.entries}
-              sum={sumEntries(ausgaben.entries)}
+              entries={ausgabenYear}
+              sum={sumEntries(ausgabenYear)}
               headerAccent="bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-200"
+              addYear={year}
+              headerRight={<YearSwitcher year={year} maxYear={maxYear} />}
             />
           )}
 
@@ -153,17 +158,12 @@ export default async function TagesgeldPage({
               sum={sumEntries(b.entries)}
               headerAccent="bg-indigo-100 text-indigo-900 dark:bg-indigo-900/40 dark:text-indigo-200"
               deletable
+              editableName
             />
           ))}
-        </section>
 
-        {/* Eigenen Block hinzufügen (saldoneutral) */}
-        <section className="mt-4 max-w-xl">
+          {/* Eigenen Block anlegen – sieht aus wie ein Block, nur grau. */}
           <AddCustomBlock />
-          <p className="mt-2 px-1 text-xs text-gray-500 dark:text-gray-400">
-            Eigene Blöcke (z. B. ETF, Aktien, Krypto) werden getrennt gezählt und
-            beeinflussen den Saldo nicht.
-          </p>
         </section>
       </div>
     </main>

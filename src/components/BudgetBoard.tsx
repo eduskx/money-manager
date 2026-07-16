@@ -1,22 +1,30 @@
-import type { EntriesBySection, Totals } from "@/lib/month";
+import { MAX_EXPENSE_COLUMNS, type MonthView, type Totals } from "@/lib/month";
 import { formatEuro } from "@/lib/format";
 import { BudgetColumn } from "@/components/BudgetColumn";
+import { AddExpenseColumn } from "@/components/AddExpenseColumn";
+
+function sumOf(entries: { amount: number }[]): number {
+  return entries.reduce((total, e) => total + e.amount, 0);
+}
 
 // Die drei Excel-Blöcke (Einnahmen | Ausgaben | Saldo). Wird sowohl für einen
 // echten Monat als auch für die Vorlage benutzt – der Aufbau ist gleich, nur
 // der Rahmen drumherum (Kopfzeile, Monatswechsel) unterscheidet sich.
 //
-// `carry`: der berechnete Übertrag aus dem Vormonat. `null` bei der Vorlage (dort
-// gibt es keinen Vormonat) – dann wird die Zeile nicht angezeigt. Die in
+// Die Ausgaben-Spalten kommen aus `view.columns`: frei benennbar, bis zu
+// MAX_EXPENSE_COLUMNS Stück.
+//
+// `carry`: der berechnete Übertrag aus dem Vormonat. `null` bei der Vorlage
+// (dort gibt es keinen Vormonat) – dann wird die Zeile nicht angezeigt. Die in
 // `totals` übergebenen income/restbetrag enthalten den Übertrag bereits.
 export function BudgetBoard({
   monthId,
-  grouped,
+  view,
   totals,
   carry = null,
 }: {
   monthId: string;
-  grouped: EntriesBySection;
+  view: MonthView;
   totals: Totals;
   carry?: number | null;
 }) {
@@ -51,14 +59,13 @@ export function BudgetBoard({
               <span className="w-20 shrink-0 text-right text-sm text-gray-500 tabular-nums dark:text-gray-400">
                 {formatEuro(carry)}
               </span>
-              {/* Platzhalter, damit die Zahl bündig mit den Zeilen darunter steht */}
               <span className="h-9 w-9 shrink-0" aria-hidden />
             </div>
           )}
 
           <BudgetColumn
             section="INCOME"
-            entries={grouped.INCOME}
+            entries={view.income}
             monthId={monthId}
           />
         </div>
@@ -66,43 +73,37 @@ export function BudgetBoard({
 
       {/* --- Ausgaben --- */}
       <section className="min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 xl:flex-1">
-        <header className="flex items-center justify-between gap-2 rounded-t-2xl bg-orange-100 px-4 py-3 dark:bg-orange-900/40">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-orange-900 dark:text-orange-200">
-            Ausgaben
-          </h2>
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-t-2xl bg-orange-100 px-4 py-3 dark:bg-orange-900/40">
+          <div className="flex min-w-0 items-center gap-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-900 dark:text-orange-200">
+              Ausgaben
+            </h2>
+            {view.columns.length < MAX_EXPENSE_COLUMNS && (
+              <AddExpenseColumn monthId={monthId} />
+            )}
+          </div>
           <span className="text-sm font-semibold text-orange-900 tabular-nums dark:text-orange-200">
             {formatEuro(totals.ausgaben)}
           </span>
         </header>
-        <div className="grid grid-cols-1 gap-x-4 gap-y-6 p-3 sm:p-4 md:grid-cols-3">
-          <BudgetColumn
-            title="Fixkosten"
-            section="FIXKOSTEN"
-            entries={grouped.FIXKOSTEN}
-            monthId={monthId}
-            sum={totals.fixkosten}
-            collapsible
-          />
-          <BudgetColumn
-            title="Einkäufe / Essen / Leben"
-            section="ALLTAG"
-            entries={grouped.ALLTAG}
-            monthId={monthId}
-            sum={totals.alltag}
-            collapsible
-          />
-          <BudgetColumn
-            title="Luxus"
-            section="LUXUS"
-            entries={grouped.LUXUS}
-            monthId={monthId}
-            sum={totals.luxus}
-            collapsible
-          />
+
+        {/* auto-fit: passt sich an 1–5 Spalten und jede Breite an. */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-x-4 gap-y-6 p-3 sm:p-4">
+          {view.columns.map((c) => (
+            <BudgetColumn
+              key={c.id}
+              section="EXPENSE"
+              column={{ id: c.id, name: c.name }}
+              entries={c.entries}
+              monthId={monthId}
+              sum={sumOf(c.entries)}
+              collapsible
+            />
+          ))}
         </div>
       </section>
 
-      {/* --- Restbetrag --- */}
+      {/* --- Saldo --- */}
       <section className="min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 xl:w-64 xl:shrink-0">
         <header className="rounded-t-2xl bg-sky-100 px-4 py-3 text-center dark:bg-sky-900/40">
           <h2 className="text-sm font-bold uppercase tracking-wide text-sky-900 dark:text-sky-200">
@@ -156,7 +157,7 @@ export function BudgetBoard({
           </p>
           <BudgetColumn
             section="RUECKLAGE"
-            entries={grouped.RUECKLAGE}
+            entries={view.ruecklagen}
             monthId={monthId}
           />
         </div>

@@ -7,12 +7,17 @@ import { IconPlus } from "@/components/icons";
 
 // Formular zum Anlegen einer neuen Zeile in einem Abschnitt. Nach dem Speichern
 // wird das Formular geleert, damit man direkt die nächste Zeile eintragen kann.
+//
+// `columnId` wird nur bei Ausgaben gesetzt – dort gehört jede Zeile in eine
+// konkrete (frei benannte) Spalte.
 export function AddEntry({
   monthId,
   section,
+  columnId = null,
 }: {
   monthId: string;
   section: Section;
+  columnId?: string | null;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -33,10 +38,11 @@ export function AddEntry({
     >
       <input type="hidden" name="monthId" value={monthId} />
       <input type="hidden" name="section" value={section} />
+      {columnId && <input type="hidden" name="columnId" value={columnId} />}
       <input
         name="label"
         required
-        placeholder="Neue Zeile …"
+        placeholder="Neuer Eintrag"
         aria-label="Bezeichnung der neuen Zeile"
         className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-emerald-500 focus:bg-white dark:text-gray-100 dark:placeholder:text-gray-600 dark:focus:bg-gray-800"
       />

@@ -10,7 +10,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth, signIn, signOut } from "@/auth";
 import { isFormulaInput, parseAmount } from "@/lib/calc";
-import { applyTemplateToMonths, previousMonth } from "@/lib/month";
+import {
+  applyTemplateToMonths,
+  MAX_EXPENSE_COLUMNS,
+  previousMonth,
+} from "@/lib/month";
 
 // ---------------------------------------------------------------------------
 // Registrierung
@@ -125,6 +129,7 @@ export async function addEntry(formData: FormData) {
 
   const monthId = String(formData.get("monthId") ?? "");
   const sectionRaw = String(formData.get("section") ?? "");
+  const columnId = String(formData.get("columnId") ?? "") || null;
   const label = String(formData.get("label") ?? "").trim();
   const rawAmount = String(formData.get("amount") ?? "");
   const amount = parseAmount(rawAmount);
@@ -140,9 +145,20 @@ export async function addEntry(formData: FormData) {
   });
   if (!month) return;
 
-  // Neue Zeile ans Ende des Abschnitts hängen.
+  // Ausgaben gehören immer in eine Spalte – und die muss zu diesem Monat gehören.
+  const isExpense = sectionRaw === Section.EXPENSE;
+  if (isExpense) {
+    if (!columnId) return;
+    const column = await prisma.expenseColumn.findFirst({
+      where: { id: columnId, monthId },
+      select: { id: true },
+    });
+    if (!column) return;
+  }
+
+  // Neue Zeile ans Ende hängen – bei Ausgaben innerhalb ihrer Spalte.
   const last = await prisma.entry.aggregate({
-    where: { monthId, section: sectionRaw },
+    where: isExpense ? { monthId, columnId } : { monthId, section: sectionRaw },
     _max: { position: true },
   });
   const position = (last._max.position ?? -1) + 1;
@@ -151,6 +167,7 @@ export async function addEntry(formData: FormData) {
     data: {
       monthId,
       section: sectionRaw,
+      columnId: isExpense ? columnId : null,
       label,
       amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
       formula,
@@ -159,6 +176,74 @@ export async function addEntry(formData: FormData) {
   });
 
   await afterEntryChange(userId, monthId, month.isTemplate);
+}
+
+// ---------------------------------------------------------------------------
+// Ausgaben-Spalten (frei benennbar, max. MAX_EXPENSE_COLUMNS)
+// ---------------------------------------------------------------------------
+
+export async function addExpenseColumn(formData: FormData) {
+  const userId = await requireUserId();
+
+  const monthId = String(formData.get("monthId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!monthId || !name) return;
+
+  const month = await prisma.month.findFirst({
+    where: { id: monthId, userId },
+    select: { id: true, isTemplate: true },
+  });
+  if (!month) return;
+
+  const count = await prisma.expenseColumn.count({ where: { monthId } });
+  if (count >= MAX_EXPENSE_COLUMNS) return;
+
+  const last = await prisma.expenseColumn.aggregate({
+    where: { monthId },
+    _max: { position: true },
+  });
+
+  await prisma.expenseColumn.create({
+    data: { monthId, name, position: (last._max.position ?? -1) + 1 },
+  });
+
+  await afterEntryChange(userId, monthId, month.isTemplate);
+}
+
+export async function renameExpenseColumn(formData: FormData) {
+  const userId = await requireUserId();
+
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!id || !name) return;
+
+  const column = await prisma.expenseColumn.findFirst({
+    where: { id, month: { userId } },
+    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+  });
+  if (!column) return;
+
+  await prisma.expenseColumn.update({ where: { id: column.id }, data: { name } });
+
+  await afterEntryChange(userId, column.monthId, column.month.isTemplate);
+}
+
+export async function deleteExpenseColumn(formData: FormData) {
+  const userId = await requireUserId();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const column = await prisma.expenseColumn.findFirst({
+    where: { id, month: { userId } },
+    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+  });
+  if (!column) return;
+
+  // Die Einträge der Spalte verschwinden per Cascade mit.
+  await prisma.expenseColumn.delete({ where: { id: column.id } });
+
+  await afterEntryChange(userId, column.monthId, column.month.isTemplate);
 }
 
 export async function updateEntry(formData: FormData) {
@@ -286,15 +371,16 @@ export async function addTagesgeldEntry(formData: FormData) {
   const yearRaw = Number(formData.get("year"));
   if (!blockId || !label) return;
 
-  // Besitz prüfen + Art bestimmen (nur EINNAHMEN bekommt ein Jahr).
+  // Besitz prüfen + Art bestimmen. Einnahmen UND Ausgaben werden pro Jahr
+  // geführt; Rücklagen und eigene Blöcke zählen konto-gesamt (kein Jahr).
   const block = await prisma.tagesgeldBlock.findFirst({
     where: { id: blockId, userId },
     select: { id: true, kind: true },
   });
   if (!block) return;
 
-  const year =
-    block.kind === "EINNAHMEN" && Number.isInteger(yearRaw) ? yearRaw : null;
+  const perYear = block.kind === "EINNAHMEN" || block.kind === "AUSGABEN";
+  const year = perYear && Number.isInteger(yearRaw) ? yearRaw : null;
 
   const last = await prisma.tagesgeldEntry.aggregate({
     where: { blockId, ...(year != null ? { year } : {}) },
@@ -376,6 +462,22 @@ export async function addCustomBlock(formData: FormData) {
       name,
       position: (last._max.position ?? -1) + 1,
     },
+  });
+
+  revalidateTagesgeld();
+}
+
+// Nur eigene CUSTOM-Blöcke umbenennen (Standardblöcke behalten ihren Namen).
+export async function renameTagesgeldBlock(formData: FormData) {
+  const userId = await requireUserId();
+
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!id || !name) return;
+
+  await prisma.tagesgeldBlock.updateMany({
+    where: { id, userId, kind: "CUSTOM" },
+    data: { name },
   });
 
   revalidateTagesgeld();
