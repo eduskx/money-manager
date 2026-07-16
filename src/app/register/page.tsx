@@ -3,6 +3,12 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { register } from "@/lib/actions";
+import {
+  fieldClass,
+  labelClass,
+  primaryButton,
+  tile,
+} from "@/components/styles";
 
 export default function RegisterPage() {
   const [errorMessage, formAction, isPending] = useActionState(
@@ -11,21 +17,26 @@ export default function RegisterPage() {
   );
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-950">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Konto erstellen
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Leg los und behalte deine Finanzen im Blick.
-        </p>
+    <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
+      <div className={`${tile} w-full max-w-sm sm:p-8`}>
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-lg font-bold text-on-accent"
+          >
+            €
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold text-ink">Konto erstellen</h1>
+            <p className="text-sm text-muted">
+              Leg los und behalte deine Finanzen im Blick.
+            </p>
+          </div>
+        </div>
 
         <form action={formAction} className="mt-6 space-y-4">
           <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="name" className={labelClass}>
               Name
             </label>
             <input
@@ -34,15 +45,12 @@ export default function RegisterPage() {
               type="text"
               required
               autoComplete="name"
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              className={fieldClass}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="email" className={labelClass}>
               E-Mail
             </label>
             <input
@@ -51,15 +59,12 @@ export default function RegisterPage() {
               type="email"
               required
               autoComplete="email"
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              className={fieldClass}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="password" className={labelClass}>
               Passwort
             </label>
             <input
@@ -69,9 +74,9 @@ export default function RegisterPage() {
               required
               minLength={8}
               autoComplete="new-password"
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              className={fieldClass}
             />
-            <p className="mt-1 text-xs text-gray-400">Mindestens 8 Zeichen.</p>
+            <p className="mt-1 text-xs text-faint">Mindestens 8 Zeichen.</p>
           </div>
 
           {errorMessage && (
@@ -83,18 +88,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+            className={`${primaryButton} w-full`}
           >
             {isPending ? "Konto wird erstellt …" : "Konto erstellen"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-6 text-center text-sm text-muted">
           Schon registriert?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
-          >
+          <Link href="/login" className="font-medium text-accent hover:underline">
             Anmelden
           </Link>
         </p>

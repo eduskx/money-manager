@@ -11,12 +11,16 @@ import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconChevronRight, IconTrash } from "@/components/icons";
 
-// Eine Spalte/ein Abschnitt mit Einträgen, „Zeile hinzufügen" und – optional –
+// Eine Spalte/ein Abschnitt mit Einträgen, „Neuer Eintrag" und – optional –
 // einer Summenzeile am Fuß.
 //
-// `column` ist nur bei Ausgaben gesetzt. Dann bekommt der Kopf ein
-// editierbares Namensfeld und einen Löschen-Button; die Zeilen hängen an der
-// Spalte (columnId) statt am Abschnitt.
+// `column` ist nur bei Ausgaben gesetzt. Dann wird der Block zur abgesetzten
+// Karte, bekommt einen Kopf mit Stift und Löschen-Knopf, und die Zeilen hängen
+// an der Spalte (columnId) statt am Abschnitt.
+//
+// `share`: Anteil dieser Spalte an den Einnahmen in Prozent (0–100). Zeigt
+// unter dem Kopf einen Balken. Er steht bewusst AUSSERHALB des Klappbereichs –
+// so bleibt der Anteil auch bei eingeklappter Spalte sichtbar.
 //
 // `collapsible`: blendet auf dem Handy einen Pfeil im Kopf ein, mit dem sich
 // die Zeilen sanft ein- und ausklappen lassen. Ab md ist der Block immer offen.
@@ -25,6 +29,7 @@ export function BudgetColumn({
   entries,
   monthId,
   sum,
+  share,
   column,
   collapsible = false,
 }: {
@@ -32,6 +37,7 @@ export function BudgetColumn({
   entries: EntryView[];
   monthId: string;
   sum?: number; // gesetzt => Summenzeile unten anzeigen
+  share?: number; // gesetzt => Anteilsbalken unter dem Kopf anzeigen
   column?: { id: string; name: string };
   collapsible?: boolean;
 }) {
@@ -39,16 +45,20 @@ export function BudgetColumn({
   const bodyId = useId();
 
   return (
-    <div className="flex h-full min-w-0 flex-col">
+    <div
+      className={`flex h-full min-w-0 flex-col ${
+        column ? "rounded-xl bg-sunken p-3" : ""
+      }`}
+    >
       {column && (
-        <div className="mb-1 flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <EditableName
             id={column.id}
             name={column.name}
             action={renameExpenseColumn}
             ariaLabel="Name der Spalte"
-            className="text-sm font-semibold text-gray-700 dark:text-gray-300"
-            iconClassName="text-gray-400 dark:text-gray-500"
+            className="text-[13px] font-bold text-ink"
+            iconClassName="text-faint"
           />
 
           {collapsible && (
@@ -57,8 +67,10 @@ export function BudgetColumn({
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
               aria-controls={bodyId}
-              aria-label={open ? `${column.name} einklappen` : `${column.name} ausklappen`}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-gray-400 dark:hover:bg-gray-800 md:hidden"
+              aria-label={
+                open ? `${column.name} einklappen` : `${column.name} ausklappen`
+              }
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-faint transition hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:hidden"
             >
               <IconChevronRight
                 className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${
@@ -72,11 +84,26 @@ export function BudgetColumn({
             <input type="hidden" name="id" value={column.id} />
             <ConfirmSubmit
               message={`Spalte „${column.name}“ mit allen Einträgen wirklich löschen?`}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-300 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-gray-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-faint transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:hover:bg-red-950/40 dark:hover:text-red-400"
             >
               <IconTrash className="h-4 w-4" />
             </ConfirmSubmit>
           </form>
+        </div>
+      )}
+
+      {/* Anteilsbalken: nur die Zahl rechts daneben, ohne Beschriftung. */}
+      {typeof share === "number" && (
+        <div className="mt-2 mb-0.5 flex items-center gap-2">
+          <span className="bar-track h-1.5 min-w-0 flex-1 overflow-hidden rounded-full">
+            <span
+              className="block h-full rounded-full bg-accent"
+              style={{ width: `${Math.min(100, Math.max(0, share))}%` }}
+            />
+          </span>
+          <span className="shrink-0 text-[11px] font-bold text-muted tabular-nums">
+            {Math.round(share)} %
+          </span>
         </div>
       )}
 
@@ -109,9 +136,13 @@ export function BudgetColumn({
       </div>
 
       {typeof sum === "number" && (
-        <div className="mt-auto flex items-center justify-between gap-2 rounded-md bg-orange-50 px-2 py-2 text-sm font-semibold text-gray-900 dark:bg-orange-950/30 dark:text-gray-100">
-          <span className="text-gray-600 dark:text-gray-400">Summe</span>
-          <span className="tabular-nums">{formatEuro(sum)}</span>
+        <div className="mt-auto flex items-baseline justify-between gap-2 border-t-2 border-accent/50 pt-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+            Summe
+          </span>
+          <span className="text-[15px] font-bold tabular-nums">
+            {formatEuro(sum)}
+          </span>
         </div>
       )}
     </div>

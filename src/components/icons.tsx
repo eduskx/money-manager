@@ -73,6 +73,20 @@ export function IconPencil({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+// Malerpalette: Umriss + vier „Farbkleckse". Die Kreise brauchen ein eigenes
+// fill, weil `base` bewusst fill="none" setzt (sonst wären sie unsichtbar).
+export function IconPalette({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10a2 2 0 0 0 2-2 1.9 1.9 0 0 0-.5-1.3 1.9 1.9 0 0 1-.5-1.3 2 2 0 0 1 2-2h2.3A4.7 4.7 0 0 0 22 10.5C22 5.81 17.52 2 12 2z" />
+      <circle cx="7" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="9.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="11" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconUser({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg {...base} className={className}>

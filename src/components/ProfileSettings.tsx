@@ -10,14 +10,16 @@ import {
   type ProfileFormState,
 } from "@/lib/actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import {
+  fieldClass,
+  labelClass,
+  primaryButton,
+  secondaryButton,
+  tile,
+} from "@/components/styles";
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white";
-const labelClass =
-  "block text-sm font-medium text-gray-700 dark:text-gray-300";
-const primaryBtn =
-  "rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:opacity-60";
-
+// Grün für Erfolg, Rot für Fehler – das sind Aussagen, keine Akzentfarben, und
+// bleiben deshalb in jeder Farbwelt gleich.
 function Feedback({ state }: { state: ProfileFormState }) {
   if (state.error) {
     return (
@@ -44,15 +46,9 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-        {title}
-      </h2>
-      {description && (
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {description}
-        </p>
-      )}
+    <section className={tile}>
+      <h2 className="text-lg font-medium text-ink">{title}</h2>
+      {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -87,10 +83,7 @@ export function ProfileSettings({
       {/* Abmelden – ganz oben, rechtsbündig */}
       <div className="flex justify-end">
         <form action={logout}>
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
+          <button type="submit" className={secondaryButton}>
             Abmelden
           </button>
         </form>
@@ -110,11 +103,11 @@ export function ProfileSettings({
               required
               defaultValue={name}
               autoComplete="name"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={namePending} className={primaryBtn}>
+            <button type="submit" disabled={namePending} className={primaryButton}>
               {namePending ? "Speichern …" : "Speichern"}
             </button>
             <Feedback state={nameState} />
@@ -139,7 +132,7 @@ export function ProfileSettings({
               required
               defaultValue={email}
               autoComplete="email"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div>
@@ -152,11 +145,11 @@ export function ProfileSettings({
               type="password"
               required
               autoComplete="current-password"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={emailPending} className={primaryBtn}>
+            <button type="submit" disabled={emailPending} className={primaryButton}>
               {emailPending ? "Ändern …" : "E-Mail ändern"}
             </button>
             <Feedback state={emailState} />
@@ -177,7 +170,7 @@ export function ProfileSettings({
               type="password"
               required
               autoComplete="current-password"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div>
@@ -190,7 +183,7 @@ export function ProfileSettings({
               type="password"
               required
               autoComplete="new-password"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div>
@@ -203,11 +196,11 @@ export function ProfileSettings({
               type="password"
               required
               autoComplete="new-password"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={pwPending} className={primaryBtn}>
+            <button type="submit" disabled={pwPending} className={primaryButton}>
               {pwPending ? "Ändern …" : "Passwort ändern"}
             </button>
             <Feedback state={pwState} />
@@ -235,7 +228,7 @@ export function ProfileSettings({
               type="password"
               required
               autoComplete="current-password"
-              className={inputClass}
+              className={fieldClass}
             />
           </div>
           <div className="flex items-center gap-3">

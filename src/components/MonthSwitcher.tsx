@@ -35,7 +35,7 @@ const MONTH_SHORT = [
 ];
 
 const arrowClass =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
 // Monatsnavigation: Pfeile für vor/zurück und ein Klick auf die Mitte öffnet
 // ein Popover zur direkten Auswahl von Monat und Jahr. Der Wechsel läuft über
@@ -118,7 +118,7 @@ export function MonthSwitcher({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="min-w-[9.5rem] rounded-lg px-3 py-2 text-center text-base font-semibold text-gray-900 tabular-nums transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-white dark:hover:bg-gray-800"
+        className="min-w-[9.5rem] rounded-lg border border-transparent px-3 py-2 text-center text-base font-semibold text-ink tabular-nums transition hover:border-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         {MONTH_NAMES[month - 1]} {year}
       </button>
@@ -138,7 +138,7 @@ export function MonthSwitcher({
         <div
           role="dialog"
           aria-label="Monat auswählen"
-          className="absolute left-1/2 top-full z-40 mt-2 w-64 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          className="absolute left-1/2 top-full z-40 mt-2 w-64 -translate-x-1/2 rounded-xl border border-line bg-surface p-3 shadow-lg"
         >
           {/* Jahres-Stepper */}
           <div className="mb-2 flex items-center justify-between">
@@ -150,7 +150,7 @@ export function MonthSwitcher({
             >
               <IconChevronLeft />
             </button>
-            <span className="text-base font-semibold text-gray-900 tabular-nums dark:text-white">
+            <span className="text-base font-semibold text-ink tabular-nums">
               {pickerYear}
             </span>
             <button
@@ -178,10 +178,10 @@ export function MonthSwitcher({
                   aria-current={isSelected ? "true" : undefined}
                   className={
                     isSelected
-                      ? "rounded-lg bg-emerald-600 px-2 py-2 text-sm font-medium text-white"
+                      ? "rounded-lg bg-accent px-2 py-2 text-sm font-medium text-on-accent"
                       : isDisabled
-                        ? "cursor-not-allowed rounded-lg px-2 py-2 text-sm text-gray-300 dark:text-gray-700"
-                        : "rounded-lg px-2 py-2 text-sm text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-gray-200 dark:hover:bg-gray-800"
+                        ? "cursor-not-allowed rounded-lg px-2 py-2 text-sm text-faint opacity-50"
+                        : "rounded-lg px-2 py-2 text-sm text-ink transition hover:bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   }
                 >
                   {name}

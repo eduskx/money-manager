@@ -13,10 +13,10 @@ export function AddExpenseColumn({ monthId }: { monthId: string }) {
       <input type="hidden" name="name" value="Neue Spalte" />
       <button
         type="submit"
-        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-orange-300 px-2.5 text-xs font-medium text-orange-900 transition hover:bg-orange-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 dark:border-orange-200/25 dark:text-orange-200 dark:hover:bg-orange-900/60"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 text-xs font-semibold text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         <IconPlus className="h-3.5 w-3.5" />
-        Weitere Spalte hinzufügen
+        Neue Spalte
       </button>
     </form>
   );
