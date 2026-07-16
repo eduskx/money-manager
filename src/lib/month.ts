@@ -5,6 +5,8 @@
 // Server-seitige Funktionen, die aus Server-Komponenten aufgerufen werden.
 // Die vom Client aufrufbaren Mutationen liegen in `src/lib/actions.ts`.
 
+import { randomUUID } from "node:crypto";
+
 import { Prisma, Section } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -21,22 +23,19 @@ import { prisma } from "@/lib/prisma";
 // ---------------------------------------------------------------------------
 
 export type Totals = {
-  income: number; // Summe Geldeingang
-  fixkosten: number;
-  alltag: number;
-  luxus: number;
-  ausgaben: number; // fixkosten + alltag + luxus
-  ruecklagen: number; // Summe der Abzüge unter dem Restbetrag
+  income: number; // Summe Einnahmen
+  ausgaben: number; // Summe über alle Ausgaben-Spalten
+  ruecklagen: number; // Summe der Abzüge unter dem Saldo
   restbetrag: number; // income - ausgaben - ruecklagen  (die fette Zahl)
 };
 
+// Die Summen je Ausgaben-Spalte stehen in der MonthView (siehe loadMonthView);
+// hier interessiert nur die Gesamtsumme aller Ausgaben.
 export function computeTotals(
   entries: { section: Section; amount: number }[],
 ): Totals {
   let income = 0;
-  let fixkosten = 0;
-  let alltag = 0;
-  let luxus = 0;
+  let ausgaben = 0;
   let ruecklagen = 0;
 
   for (const e of entries) {
@@ -44,14 +43,8 @@ export function computeTotals(
       case Section.INCOME:
         income += e.amount;
         break;
-      case Section.FIXKOSTEN:
-        fixkosten += e.amount;
-        break;
-      case Section.ALLTAG:
-        alltag += e.amount;
-        break;
-      case Section.LUXUS:
-        luxus += e.amount;
+      case Section.EXPENSE:
+        ausgaben += e.amount;
         break;
       case Section.RUECKLAGE:
         ruecklagen += e.amount;
@@ -59,9 +52,8 @@ export function computeTotals(
     }
   }
 
-  const ausgaben = fixkosten + alltag + luxus;
   const restbetrag = income - ausgaben - ruecklagen;
-  return { income, fixkosten, alltag, luxus, ausgaben, ruecklagen, restbetrag };
+  return { income, ausgaben, ruecklagen, restbetrag };
 }
 
 // ---------------------------------------------------------------------------
@@ -76,54 +68,99 @@ export type EntryView = {
   formula: string | null;
 };
 
-export type EntriesBySection = Record<Section, EntryView[]>;
+export type ColumnView = {
+  id: string;
+  name: string;
+  position: number;
+  entries: EntryView[];
+};
 
-function emptyGroups(): EntriesBySection {
-  return {
-    INCOME: [],
-    FIXKOSTEN: [],
-    ALLTAG: [],
-    LUXUS: [],
-    RUECKLAGE: [],
-  };
-}
+// Ein Monat (oder die Vorlage) fürs UI: zwei feste Blöcke plus die frei
+// benennbaren Ausgaben-Spalten.
+export type MonthView = {
+  income: EntryView[];
+  ruecklagen: EntryView[];
+  columns: ColumnView[];
+};
+
+/** Höchstzahl an Ausgaben-Spalten je Monat/Vorlage. */
+export const MAX_EXPENSE_COLUMNS = 5;
 
 /**
- * Lädt alle Einträge eines Monats und gruppiert sie nach Abschnitt.
- * Beträge werden dabei von Prisma-Decimal in `number` gewandelt.
+ * Lädt Einträge und Ausgaben-Spalten eines Monats und baut daraus die
+ * Ansicht. Beträge werden dabei von Prisma-Decimal in `number` gewandelt.
  */
-export async function getEntriesBySection(
-  monthId: string,
-): Promise<EntriesBySection> {
-  const rows = await prisma.entry.findMany({
-    where: { monthId },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  });
+export async function loadMonthView(monthId: string): Promise<MonthView> {
+  const [rows, columns] = await Promise.all([
+    prisma.entry.findMany({
+      where: { monthId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.expenseColumn.findMany({
+      where: { monthId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
 
-  const grouped = emptyGroups();
+  const view: MonthView = {
+    income: [],
+    ruecklagen: [],
+    columns: columns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      position: c.position,
+      entries: [],
+    })),
+  };
+
+  const byColumn = new Map(view.columns.map((c) => [c.id, c]));
+
   for (const r of rows) {
-    grouped[r.section].push({
+    const entry: EntryView = {
       id: r.id,
       section: r.section,
       label: r.label,
       amount: Number(r.amount),
       formula: r.formula,
-    });
+    };
+    if (r.section === Section.INCOME) view.income.push(entry);
+    else if (r.section === Section.RUECKLAGE) view.ruecklagen.push(entry);
+    else if (r.columnId) byColumn.get(r.columnId)?.entries.push(entry);
   }
-  return grouped;
+
+  return view;
+}
+
+/** Alle Einträge einer Ansicht flach – praktisch für computeTotals. */
+export function flattenEntries(view: MonthView): EntryView[] {
+  return [
+    ...view.income,
+    ...view.ruecklagen,
+    ...view.columns.flatMap((c) => c.entries),
+  ];
 }
 
 // ---------------------------------------------------------------------------
 // Vorlage & Monatsanlage
 // ---------------------------------------------------------------------------
 
-/** Genau eine Vorlage pro User – bei Bedarf leer anlegen. */
+/**
+ * Genau eine Vorlage pro User – bei Bedarf anlegen. Eine frische Vorlage
+ * startet mit genau einer Ausgaben-Spalte („Fixkosten"); weitere legt der
+ * Nutzer selbst an.
+ */
 export async function getOrCreateTemplate(userId: string) {
   const existing = await prisma.month.findFirst({
     where: { userId, isTemplate: true },
   });
   if (existing) return existing;
-  return prisma.month.create({ data: { userId, isTemplate: true } });
+  return prisma.month.create({
+    data: {
+      userId,
+      isTemplate: true,
+      columns: { create: [{ name: "Fixkosten", position: 0 }] },
+    },
+  });
 }
 
 export function previousMonth(year: number, month: number) {
@@ -150,29 +187,72 @@ export function isMonthAfter(
   return year > limit.year || (year === limit.year && month > limit.month);
 }
 
-// Vorlage-Einträge als Kopier-Vorlage für einen Monat aufbereiten.
-function toCopy(
-  entries: {
-    section: Section;
-    label: string;
-    amount: Prisma.Decimal;
-    formula: string | null;
-    position: number;
-  }[],
-): Prisma.EntryCreateWithoutMonthInput[] {
-  return entries.map((e) => ({
-    section: e.section,
-    label: e.label,
-    amount: e.amount,
-    formula: e.formula,
-    position: e.position,
+// Vorlage laden: Spalten + Einträge, beides in Anzeigereihenfolge.
+async function loadTemplateContent(templateId: string) {
+  return Promise.all([
+    prisma.expenseColumn.findMany({
+      where: { monthId: templateId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.entry.findMany({
+      where: { monthId: templateId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
+}
+
+type TemplateColumn = { id: string; name: string; position: number };
+type TemplateEntry = {
+  section: Section;
+  label: string;
+  amount: Prisma.Decimal;
+  formula: string | null;
+  position: number;
+  columnId: string | null;
+};
+
+/**
+ * Baut die Kopier-Daten für einen Ziel-Monat: neue Spalten (mit eigenen IDs)
+ * und die Einträge, deren columnId auf die neue Spalte zeigt. Die Zuordnung
+ * läuft über `position` – die ist je Monat eindeutig.
+ */
+function buildCopy(
+  targetMonthId: string,
+  templateColumns: TemplateColumn[],
+  templateEntries: TemplateEntry[],
+) {
+  const columns = templateColumns.map((c) => ({
+    id: randomUUID(),
+    monthId: targetMonthId,
+    name: c.name,
+    position: c.position,
   }));
+
+  const newIdByPosition = new Map(columns.map((c) => [c.position, c.id]));
+  const positionByTemplateId = new Map(
+    templateColumns.map((c) => [c.id, c.position]),
+  );
+
+  const entries = templateEntries.map((e) => {
+    const pos = e.columnId != null ? positionByTemplateId.get(e.columnId) : undefined;
+    return {
+      monthId: targetMonthId,
+      section: e.section,
+      label: e.label,
+      amount: e.amount,
+      formula: e.formula,
+      position: e.position,
+      columnId: pos != null ? (newIdByPosition.get(pos) ?? null) : null,
+    };
+  });
+
+  return { columns, entries };
 }
 
 /**
  * Liefert den Monat (year/month) für einen User. Existiert er noch nicht, wird
- * er beim ersten Öffnen aus der Vorlage materialisiert (reine Kopie der
- * Vorlage-Einträge). Der „Saldo aus Vormonat" wird NICHT gespeichert, sondern
+ * er beim ersten Öffnen aus der Vorlage materialisiert – inklusive der
+ * Ausgaben-Spalten. Der „Vormonat"-Übertrag wird NICHT gespeichert, sondern
  * dynamisch berechnet (siehe computeChain) – so bleibt er immer aktuell.
  * Idempotent: bei parallelem Anlegen (P2002) wird der Monat erneut gelesen.
  */
@@ -187,19 +267,23 @@ export async function getOrCreateMonth(
   if (existing) return existing;
 
   const template = await getOrCreateTemplate(userId);
-  const templateEntries = await prisma.entry.findMany({
-    where: { monthId: template.id },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  });
+  const [templateColumns, templateEntries] = await loadTemplateContent(
+    template.id,
+  );
 
   try {
-    return await prisma.month.create({
-      data: {
-        userId,
-        year,
-        month,
-        entries: { create: toCopy(templateEntries) },
-      },
+    // Alles in einer Transaktion: entweder ganzer Monat oder gar keiner.
+    return await prisma.$transaction(async (tx) => {
+      const created = await tx.month.create({ data: { userId, year, month } });
+      const copy = buildCopy(created.id, templateColumns, templateEntries);
+
+      if (copy.columns.length > 0) {
+        await tx.expenseColumn.createMany({ data: copy.columns });
+      }
+      if (copy.entries.length > 0) {
+        await tx.entry.createMany({ data: copy.entries });
+      }
+      return created;
     });
   } catch (err) {
     if (
@@ -317,10 +401,9 @@ export { monthKey };
  */
 export async function applyTemplateToMonths(userId: string) {
   const template = await getOrCreateTemplate(userId);
-  const templateEntries = await prisma.entry.findMany({
-    where: { monthId: template.id },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  });
+  const [templateColumns, templateEntries] = await loadTemplateContent(
+    template.id,
+  );
 
   const months = await prisma.month.findMany({
     where: { userId, isTemplate: false, customized: false },
@@ -328,19 +411,19 @@ export async function applyTemplateToMonths(userId: string) {
   });
 
   for (const m of months) {
-    // Alte (Vorlage-)Einträge weg, aktuelle Vorlage rein – atomar pro Monat.
-    await prisma.$transaction([
-      prisma.entry.deleteMany({ where: { monthId: m.id } }),
-      prisma.entry.createMany({
-        data: templateEntries.map((e) => ({
-          monthId: m.id,
-          section: e.section,
-          label: e.label,
-          amount: e.amount,
-          formula: e.formula,
-          position: e.position,
-        })),
-      }),
-    ]);
+    const copy = buildCopy(m.id, templateColumns, templateEntries);
+
+    // Alte Spalten + Einträge weg, aktuelle Vorlage rein – atomar pro Monat.
+    await prisma.$transaction(async (tx) => {
+      await tx.expenseColumn.deleteMany({ where: { monthId: m.id } });
+      await tx.entry.deleteMany({ where: { monthId: m.id } });
+
+      if (copy.columns.length > 0) {
+        await tx.expenseColumn.createMany({ data: copy.columns });
+      }
+      if (copy.entries.length > 0) {
+        await tx.entry.createMany({ data: copy.entries });
+      }
+    });
   }
 }

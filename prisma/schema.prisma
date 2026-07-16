@@ -23,14 +23,12 @@ model User {
   tagesgeldBlocks TagesgeldBlock[]
 }
 
-// Ein Abschnitt/Block innerhalb eines Monats. Bildet das Excel-Layout ab:
-// Geldeingang, die drei Ausgaben-Spalten und die Abzüge unter dem Restbetrag.
+// Grober Abschnitt eines Eintrags. Einnahmen und Abzüge sind feste Blöcke;
+// Ausgaben sind flexibel: welche Spalte gemeint ist, steht in Entry.columnId.
 enum Section {
-  INCOME // Geldeingang
-  FIXKOSTEN // Ausgaben – Fixkosten
-  ALLTAG // Ausgaben – Einkäufe / Essen / Leben
-  LUXUS // Ausgaben – Luxus
-  RUECKLAGE // Abzüge unter dem Restbetrag (z. B. Tagesgeld, ETF)
+  INCOME // Einnahmen
+  EXPENSE // Ausgaben – die konkrete Spalte steht in Entry.columnId
+  RUECKLAGE // Abzüge unter dem Saldo (z. B. Tagesgeld, ETF)
 }
 
 // Ein Budget-Monat ODER die Vorlage (isTemplate = true). Beide sind nur
@@ -48,8 +46,9 @@ model Month {
   createdAt  DateTime @default(now())
 
   userId  String
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries Entry[]
+  columns ExpenseColumn[]
 
   // Verhindert doppelte echte Monate. Für die Vorlage (year/month = null)
   // greift der Constraint in Postgres nicht – dort sorgt die App-Logik dafür,
@@ -72,6 +71,29 @@ model Entry {
 
   monthId String
   month   Month  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  // Nur bei section = EXPENSE gesetzt: die Ausgaben-Spalte, zu der die Zeile
+  // gehört. Wird die Spalte gelöscht, verschwinden ihre Zeilen mit (Cascade).
+  columnId String?
+  column   ExpenseColumn? @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@index([columnId])
+  @@index([monthId])
+}
+
+// Eine frei benennbare Ausgaben-Spalte eines Monats (oder der Vorlage), z. B.
+// „Fixkosten" oder „Einkäufe / Essen / Leben". Ein neuer Monat/eine neue
+// Vorlage startet mit genau einer Spalte („Fixkosten"); der Nutzer kann bis zu
+// MAX_EXPENSE_COLUMNS (5) Spalten anlegen, umbenennen und löschen.
+model ExpenseColumn {
+  id        String   @id @default(cuid())
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  monthId String
+  month   Month   @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  entries Entry[]
 
   @@index([monthId])
 }

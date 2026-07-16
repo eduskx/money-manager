@@ -5,8 +5,9 @@ import { auth } from "@/auth";
 import { clearTemplate } from "@/lib/actions";
 import {
   computeTotals,
-  getEntriesBySection,
+  flattenEntries,
   getOrCreateTemplate,
+  loadMonthView,
 } from "@/lib/month";
 import { BudgetBoard } from "@/components/BudgetBoard";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -21,8 +22,8 @@ export default async function VorlagePage() {
   if (!session?.user?.id) redirect("/login");
 
   const template = await getOrCreateTemplate(session.user.id);
-  const grouped = await getEntriesBySection(template.id);
-  const totals = computeTotals(Object.values(grouped).flat());
+  const view = await loadMonthView(template.id);
+  const totals = computeTotals(flattenEntries(view));
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -72,11 +73,7 @@ export default async function VorlagePage() {
 
         {/* Gleicher Aufbau wie ein Monat */}
         <div className="mt-6">
-          <BudgetBoard
-            monthId={template.id}
-            grouped={grouped}
-            totals={totals}
-          />
+          <BudgetBoard monthId={template.id} view={view} totals={totals} />
         </div>
       </div>
     </main>
