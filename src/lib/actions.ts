@@ -15,6 +15,7 @@ import {
   MAX_EXPENSE_COLUMNS,
   previousMonth,
 } from "@/lib/month";
+import { MAX_SAVINGS_ACCOUNTS } from "@/lib/tagesgeld";
 
 // ---------------------------------------------------------------------------
 // Registrierung
@@ -356,8 +357,11 @@ export async function clearTemplate() {
 // Tagesgeld (Phase 2)
 // ---------------------------------------------------------------------------
 
+// Übersicht und alle Konto-Detailseiten neu rendern. Für die dynamische Route
+// braucht revalidatePath das Muster plus den Typ "page".
 function revalidateTagesgeld() {
-  revalidatePath("/dashboard/tagesgeld");
+  revalidatePath("/dashboard/sparkonten");
+  revalidatePath("/dashboard/sparkonten/[accountId]", "page");
 }
 
 export async function addTagesgeldEntry(formData: FormData) {
@@ -374,7 +378,7 @@ export async function addTagesgeldEntry(formData: FormData) {
   // Besitz prüfen + Art bestimmen. Einnahmen UND Ausgaben werden pro Jahr
   // geführt; Rücklagen und eigene Blöcke zählen konto-gesamt (kein Jahr).
   const block = await prisma.tagesgeldBlock.findFirst({
-    where: { id: blockId, userId },
+    where: { id: blockId, account: { userId } },
     select: { id: true, kind: true },
   });
   if (!block) return;
@@ -413,7 +417,7 @@ export async function updateTagesgeldEntry(formData: FormData) {
   if (!id) return;
 
   const entry = await prisma.tagesgeldEntry.findFirst({
-    where: { id, block: { userId } },
+    where: { id, block: { account: { userId } } },
     select: { id: true },
   });
   if (!entry) return;
@@ -437,27 +441,36 @@ export async function deleteTagesgeldEntry(formData: FormData) {
   if (!id) return;
 
   await prisma.tagesgeldEntry.deleteMany({
-    where: { id, block: { userId } },
+    where: { id, block: { account: { userId } } },
   });
 
   revalidateTagesgeld();
 }
 
-// Einen eigenen Block anlegen (z. B. ETF, Aktien, Krypto). Saldoneutral.
+// Einen eigenen Block in einem Konto anlegen (z. B. ETF, Aktien, Krypto).
+// Saldoneutral.
 export async function addCustomBlock(formData: FormData) {
   const userId = await requireUserId();
 
+  const accountId = String(formData.get("accountId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!accountId || !name) return;
+
+  // Besitz prüfen: Gehört das Konto diesem User?
+  const account = await prisma.savingsAccount.findFirst({
+    where: { id: accountId, userId },
+    select: { id: true },
+  });
+  if (!account) return;
 
   const last = await prisma.tagesgeldBlock.aggregate({
-    where: { userId },
+    where: { accountId },
     _max: { position: true },
   });
 
   await prisma.tagesgeldBlock.create({
     data: {
-      userId,
+      accountId,
       kind: "CUSTOM",
       name,
       position: (last._max.position ?? -1) + 1,
@@ -476,7 +489,7 @@ export async function renameTagesgeldBlock(formData: FormData) {
   if (!id || !name) return;
 
   await prisma.tagesgeldBlock.updateMany({
-    where: { id, userId, kind: "CUSTOM" },
+    where: { id, account: { userId }, kind: "CUSTOM" },
     data: { name },
   });
 
@@ -491,10 +504,70 @@ export async function deleteCustomBlock(formData: FormData) {
   if (!id) return;
 
   await prisma.tagesgeldBlock.deleteMany({
-    where: { id, userId, kind: "CUSTOM" },
+    where: { id, account: { userId }, kind: "CUSTOM" },
   });
 
   revalidateTagesgeld();
+}
+
+// ---------------------------------------------------------------------------
+// Sparkonten (max. MAX_SAVINGS_ACCOUNTS)
+// ---------------------------------------------------------------------------
+
+// Legt sofort ein weiteres Konto namens „Neues Konto" an – umbenennen kann der
+// Nutzer es direkt in der Übersicht.
+export async function addSavingsAccount() {
+  const userId = await requireUserId();
+
+  const count = await prisma.savingsAccount.count({ where: { userId } });
+  if (count >= MAX_SAVINGS_ACCOUNTS) return;
+
+  const last = await prisma.savingsAccount.aggregate({
+    where: { userId },
+    _max: { position: true },
+  });
+
+  await prisma.savingsAccount.create({
+    data: {
+      userId,
+      name: "Neues Konto",
+      position: (last._max.position ?? -1) + 1,
+    },
+  });
+
+  revalidateTagesgeld();
+}
+
+export async function renameSavingsAccount(formData: FormData) {
+  const userId = await requireUserId();
+
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!id || !name) return;
+
+  await prisma.savingsAccount.updateMany({
+    where: { id, userId },
+    data: { name },
+  });
+
+  revalidateTagesgeld();
+}
+
+// Löscht ein Konto samt allen Blöcken und Einträgen (Cascade). Das letzte
+// Konto bleibt bestehen, damit die Übersicht nie leer ist.
+export async function deleteSavingsAccount(formData: FormData) {
+  const userId = await requireUserId();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const count = await prisma.savingsAccount.count({ where: { userId } });
+  if (count <= 1) return;
+
+  await prisma.savingsAccount.deleteMany({ where: { id, userId } });
+
+  revalidateTagesgeld();
+  redirect("/dashboard/sparkonten");
 }
 
 // ---------------------------------------------------------------------------
