@@ -17,6 +17,12 @@ import {
 } from "@/lib/month";
 import { MAX_SAVINGS_ACCOUNTS } from "@/lib/tagesgeld";
 import { isPalette } from "@/lib/palette";
+import {
+  createGuestUser,
+  deleteExpiredGuests,
+  reuseGuest,
+  type GuestCredentials,
+} from "@/lib/guest";
 
 // ---------------------------------------------------------------------------
 // Registrierung
@@ -54,6 +60,45 @@ export async function register(
 
   // Direkt einloggen und aufs Dashboard leiten.
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+}
+
+// ---------------------------------------------------------------------------
+// Gast-Login
+// ---------------------------------------------------------------------------
+
+// Legt ein Gast-Konto mit Beispieldaten an und meldet direkt damit an.
+// Nimmt bewusst keine Parameter: Der Knopf schickt nichts mit, es gibt nichts
+// zu validieren. Bei Erfolg endet der Aufruf in einem Redirect aufs Dashboard,
+// im Fehlerfall kommt eine Meldung zurück.
+export async function loginAsGuest(): Promise<string | undefined> {
+  let credentials: GuestCredentials;
+
+  try {
+    // Kennt dieses Gerät schon ein Gast-Konto, das es noch gibt? Dann dorthin
+    // zurück – der Gast findet seine Zahlen wieder, statt neu anzufangen.
+    const existing = await reuseGuest();
+
+    if (existing) {
+      credentials = existing;
+    } else {
+      // Erst aufräumen, dann anlegen. Der neue Gast zahlt für die alten – so
+      // braucht es keinen Cron-Job, und aufgeräumt wird nur, wenn jemand
+      // kommt. Bewusst nur in diesem Zweig: Wer bloß zu seinem Konto
+      // zurückkehrt, soll nicht die Aufräum-Runde bezahlen.
+      await deleteExpiredGuests();
+      credentials = await createGuestUser();
+    }
+  } catch (error) {
+    console.error("Gast-Zugang fehlgeschlagen:", error);
+    return "Der Gast-Zugang ist gerade nicht verfügbar. Bitte versuch es später noch einmal.";
+  }
+
+  // Bewusst AUSSERHALB des try: signIn wirft bei Erfolg einen Redirect, und
+  // der muss durchgereicht werden – ein catch drumherum würde ihn schlucken.
+  //
+  // Angemeldet wird der Gast wie jeder andere: Er ist ein normaler Nutzer. Das
+  // Zufallspasswort kennt nur dieser Aufruf, es verlässt den Server nicht.
+  await signIn("credentials", { ...credentials, redirectTo: "/dashboard" });
 }
 
 // ---------------------------------------------------------------------------
@@ -637,11 +682,32 @@ const EmailSchema = z.object({
   password: z.string().min(1, "Bitte bestätige die Änderung mit deinem Passwort."),
 });
 
+// Ein Gast hat Zufalls-Zugangsdaten, die er nie zu sehen bekommt. E-Mail und
+// Passwort zu ändern oder das Konto zu löschen ergibt für ihn keinen Sinn.
+//
+// Diese Prüfung ist NICHT nur Kosmetik: Die Oberfläche blendet die Felder für
+// Gäste zwar aus, aber Server-Actions sind Endpunkte – wer die Anfrage von
+// Hand schickt, umgeht jedes Ausblenden. Die Regel gehört deshalb hierher.
+async function rejectGuest(userId: string): Promise<ProfileFormState | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isGuest: true },
+  });
+  if (!user?.isGuest) return null;
+  return {
+    error:
+      "Das geht im Gast-Modus nicht. Registriere dich, um deine Daten dauerhaft zu behalten.",
+  };
+}
+
 export async function updateEmail(
   _prev: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
   const userId = await requireUserId();
+
+  const guest = await rejectGuest(userId);
+  if (guest) return guest;
 
   const parsed = EmailSchema.safeParse({
     email: formData.get("email"),
@@ -700,6 +766,9 @@ export async function updatePassword(
 ): Promise<ProfileFormState> {
   const userId = await requireUserId();
 
+  const guest = await rejectGuest(userId);
+  if (guest) return guest;
+
   const parsed = PasswordSchema.safeParse({
     current: formData.get("current"),
     next: formData.get("next"),
@@ -739,6 +808,9 @@ export async function deleteAccount(
   formData: FormData,
 ): Promise<ProfileFormState> {
   const userId = await requireUserId();
+
+  const guest = await rejectGuest(userId);
+  if (guest) return guest;
 
   const parsed = DeleteAccountSchema.safeParse({
     password: formData.get("password"),

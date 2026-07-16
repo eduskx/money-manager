@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { DEFAULT_PALETTE, paletteAttr } from "@/lib/palette";
+import { getSessionUser } from "@/lib/user";
 import { InlineScript } from "@/components/InlineScript";
 
 export const metadata: Metadata = {
@@ -33,15 +32,12 @@ export default async function RootLayout({
   // Die Farbwelt hängt am Nutzer. Den Standard sehen drei Gruppen: wer nicht
   // angemeldet ist (Login, Registrierung), wer noch nie eine Farbe gewählt hat
   // (palette ist dann null) – und wer neu dazukommt.
-  const session = await auth();
-  let palette = DEFAULT_PALETTE;
-  if (session?.user?.id) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { palette: true },
-    });
-    palette = user?.palette ?? DEFAULT_PALETTE;
-  }
+  //
+  // getSessionUser fragt die DB nur beim ersten Aufruf pro Anfrage; die
+  // anderen Stellen (Dashboard-Layout, Seite, HeaderTools) bekommen dasselbe
+  // Ergebnis geschenkt.
+  const user = await getSessionUser();
+  const palette = user?.palette ?? DEFAULT_PALETTE;
 
   return (
     <html

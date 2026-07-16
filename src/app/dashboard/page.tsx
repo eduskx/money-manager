@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/user";
 import { deleteAllMonths, deleteCurrentMonth } from "@/lib/actions";
 import {
   computeTotals,
@@ -54,24 +54,30 @@ export default async function DashboardPage({
     redirect(`/dashboard?y=${maxMonthValue.year}&m=${maxMonthValue.month}`);
   }
 
-  // Monat holen oder aus der Vorlage anlegen.
+  // Monat holen oder aus der Vorlage anlegen. Muss zuerst laufen: Die Kette
+  // unten soll den Monat mitzählen, auch wenn er gerade erst entsteht.
   const budgetMonth = await getOrCreateMonth(session.user.id, year, month);
-  const view = await loadMonthView(budgetMonth.id);
 
-  // Ganze Monatskette durchrechnen -> liefert den dynamischen „Saldo aus
-  // Vormonat" (carry) sowie income/restbetrag inkl. Übertrag.
-  const chain = await loadMonthChain(session.user.id);
+  // Diese beiden wissen nichts voneinander – also nebeneinander statt
+  // nacheinander. Kostet damit die Zeit der langsameren statt die Summe.
+  //
+  //   view  = die Ansicht dieses einen Monats (Spalten + Zeilen)
+  //   chain = alle Monate durchgerechnet -> liefert den „Vormonat"-Übertrag
+  //           sowie income/restbetrag inkl. Übertrag
+  const [view, chain] = await Promise.all([
+    loadMonthView(budgetMonth.id),
+    loadMonthChain(session.user.id),
+  ]);
+
   const comp =
     chain.get(monthKey(year, month)) ??
     // Fallback (sollte nach getOrCreateMonth nicht vorkommen): ohne Übertrag.
     { ...computeTotals(flattenEntries(view)), carry: 0, hasPrev: false };
 
   // Anzeigename frisch aus der DB, damit Profil-Änderungen sofort erscheinen.
-  // Die Farbwelt holt sich HeaderTools selbst.
-  const profile = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { name: true, email: true },
-  });
+  // Kostet keine eigene Abfrage: Das Layout hat den Nutzer in derselben
+  // Anfrage schon geholt, getSessionUser gibt ihn nur weiter.
+  const profile = await getSessionUser();
   const displayName = profile?.name || profile?.email || session.user.email;
 
   return (

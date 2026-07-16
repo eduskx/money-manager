@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import {
   deleteAccount,
   logout,
@@ -57,9 +58,13 @@ function Card({
 export function ProfileSettings({
   name,
   email,
+  isGuest = false,
+  guestExpiresAt = null,
 }: {
   name: string;
   email: string;
+  isGuest?: boolean;
+  guestExpiresAt?: string | null; // schon formatiert – der Server kennt die Zeitzone
 }) {
   const [nameState, nameAction, namePending] = useActionState(
     updateProfileName,
@@ -89,6 +94,28 @@ export function ProfileSettings({
         </form>
       </div>
 
+      {/* Gast-Hinweis: sagt, was gilt, und bietet den Ausweg an. Steht ganz
+          oben, weil es die wichtigste Information auf dieser Seite ist. */}
+      {isGuest && (
+        <section className={tile}>
+          <h2 className="text-lg font-medium text-ink">Du bist als Gast hier</h2>
+          <p className="mt-1 text-sm text-muted">
+            Alles, was du siehst, sind Beispieldaten – ändere sie ruhig, du
+            kannst nichts kaputt machen.
+            {guestExpiresAt
+              ? ` Dieses Gast-Konto wird am ${guestExpiresAt} automatisch gelöscht.`
+              : ""}{" "}
+            Wenn du deine Zahlen behalten möchtest, brauchst du ein eigenes
+            Konto.
+          </p>
+          <div className="mt-4">
+            <Link href="/register" className={primaryButton}>
+              Eigenes Konto erstellen
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Anzeigename */}
       <Card title="Anzeigename">
         <form action={nameAction} className="space-y-3">
@@ -115,6 +142,12 @@ export function ProfileSettings({
         </form>
       </Card>
 
+      {/* E-Mail, Passwort und Konto löschen ergeben für einen Gast keinen
+          Sinn: Seine Zugangsdaten sind Zufallswerte, die er nie zu sehen
+          bekommt. Ausgeblendet ist hier nur die halbe Miete – die Actions
+          selbst lehnen Gäste ebenfalls ab (siehe rejectGuest). */}
+      {!isGuest && (
+        <>
       {/* E-Mail */}
       <Card
         title="E-Mail-Adresse"
@@ -242,6 +275,8 @@ export function ProfileSettings({
           </div>
         </form>
       </section>
+        </>
+      )}
     </div>
   );
 }

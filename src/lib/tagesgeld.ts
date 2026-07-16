@@ -187,16 +187,22 @@ export type SavingsAccountSummary = SavingsAccountView & { saldo: number };
 export async function loadAccountSummaries(
   userId: string,
 ): Promise<SavingsAccountSummary[]> {
-  const accounts = await getOrCreateSavingsAccounts(userId);
-
-  const blocks = await prisma.tagesgeldBlock.findMany({
-    where: { account: { userId } },
-    select: {
-      accountId: true,
-      kind: true,
-      entries: { select: { amount: true } },
-    },
-  });
+  // Nebeneinander: Die Blöcke hängen zwar an den Konten, gefiltert wird aber
+  // über den User – die Abfrage braucht die Konten-IDs also gar nicht. Legt
+  // getOrCreateSavingsAccounts gerade erst ein erstes Konto an, hat das noch
+  // keine Blöcke; die Summen unten bauen ohnehin auf `accounts` auf und
+  // stimmen dann mit 0.
+  const [accounts, blocks] = await Promise.all([
+    getOrCreateSavingsAccounts(userId),
+    prisma.tagesgeldBlock.findMany({
+      where: { account: { userId } },
+      select: {
+        accountId: true,
+        kind: true,
+        entries: { select: { amount: true } },
+      },
+    }),
+  ]);
 
   // Saldo = Σ Einnahmen − Σ Ausgaben (CUSTOM und Rücklagen zählen nicht rein).
   const sums = new Map<string, { einnahmen: number; ausgaben: number }>();
