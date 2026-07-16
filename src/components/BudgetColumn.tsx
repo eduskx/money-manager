@@ -1,12 +1,13 @@
 "use client";
 
-import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import type { Section } from "@prisma/client";
 import type { EntryView } from "@/lib/month";
 import { deleteExpenseColumn, renameExpenseColumn } from "@/lib/actions";
 import { formatEuro } from "@/lib/format";
 import { EntryRow } from "@/components/EntryRow";
 import { AddEntry } from "@/components/AddEntry";
+import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconChevronRight, IconTrash } from "@/components/icons";
 
@@ -36,45 +37,19 @@ export function BudgetColumn({
 }) {
   const [open, setOpen] = useState(true);
   const bodyId = useId();
-  const nameRef = useRef<HTMLInputElement>(null);
-  const nameFormRef = useRef<HTMLFormElement>(null);
-  const savedName = useRef(column?.name ?? "");
-
-  // Spaltenname beim Verlassen des Feldes oder mit Enter speichern.
-  function saveName() {
-    const value = nameRef.current?.value.trim() ?? "";
-    if (!value || value === savedName.current) return;
-    savedName.current = value;
-    nameFormRef.current?.requestSubmit();
-  }
-  function nameKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      saveName();
-    }
-  }
 
   return (
     <div className="flex h-full min-w-0 flex-col">
       {column && (
         <div className="mb-1 flex items-center gap-1">
-          <form
-            ref={nameFormRef}
+          <EditableName
+            id={column.id}
+            name={column.name}
             action={renameExpenseColumn}
-            className="min-w-0 flex-1"
-          >
-            <input type="hidden" name="id" value={column.id} />
-            <input
-              ref={nameRef}
-              name="name"
-              defaultValue={column.name}
-              onBlur={saveName}
-              onKeyDown={nameKey}
-              title={column.name}
-              aria-label="Name der Spalte"
-              className="w-full min-w-0 truncate rounded-md border border-transparent bg-transparent px-2 py-1.5 text-center text-sm font-semibold text-gray-700 outline-none hover:border-gray-200 focus:border-emerald-500 focus:bg-white dark:text-gray-300 dark:hover:border-gray-700 dark:focus:bg-gray-800"
-            />
-          </form>
+            ariaLabel="Name der Spalte"
+            className="text-sm font-semibold text-gray-700 dark:text-gray-300"
+            iconClassName="text-gray-400 dark:text-gray-500"
+          />
 
           {collapsible && (
             <button
