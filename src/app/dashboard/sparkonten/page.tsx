@@ -2,10 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import {
-  loadAccountSummaries,
-  MAX_SAVINGS_ACCOUNTS,
-} from "@/lib/tagesgeld";
+import { loadAccountSummaries, MAX_SAVINGS_ACCOUNTS } from "@/lib/tagesgeld";
 import {
   addSavingsAccount,
   deleteSavingsAccount,
@@ -14,7 +11,15 @@ import {
 import { formatEuro } from "@/lib/format";
 import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeaderTools } from "@/components/HeaderTools";
+import {
+  bigNumber,
+  filledHeader,
+  headerButton,
+  headerIconButton,
+  tileFlush,
+  tileHeading,
+} from "@/components/styles";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -22,8 +27,8 @@ import {
   IconTrash,
 } from "@/components/icons";
 
-// Übersicht aller Sparkonten: je Konto Name (bearbeitbar) und Saldo. Ein Klick
-// auf die Karte öffnet das Konto mit seinen Blöcken.
+// Übersicht aller Sparkonten: je Konto Name (über den Stift bearbeitbar) und
+// Saldo. Ein Klick auf den Saldo-Bereich öffnet das Konto.
 export default async function SparkontenPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -33,7 +38,7 @@ export default async function SparkontenPage() {
   const canDelete = accounts.length > 1;
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">
         {/* Kopfzeile */}
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -41,15 +46,13 @@ export default async function SparkontenPage() {
             <Link
               href="/dashboard"
               aria-label="Zurück zur Monatsansicht"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={headerIconButton}
             >
               <IconChevronLeft />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Sparkonten
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h1 className="text-2xl font-semibold text-ink">Sparkonten</h1>
+              <p className="text-sm text-muted">
                 {accounts.length} von {MAX_SAVINGS_ACCOUNTS} Konten
               </p>
             </div>
@@ -58,41 +61,38 @@ export default async function SparkontenPage() {
           <div className="flex items-center gap-2">
             {canAdd && (
               <form action={addSavingsAccount}>
-                <button
-                  type="submit"
-                  className="inline-flex h-11 items-center gap-1 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
+                <button type="submit" className={headerButton}>
                   <IconPlus className="h-4 w-4" />
                   Konto hinzufügen
                 </button>
               </form>
             )}
-            <ThemeToggle />
+            <HeaderTools />
           </div>
         </header>
 
         {/* Konten */}
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {accounts.map((a) => (
-            <article
-              key={a.id}
-              className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-sky-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-sky-800"
-            >
-              <header className="flex h-14 items-center gap-1 rounded-t-2xl bg-sky-100 px-3 dark:bg-sky-900/40">
+            // min-h-64: rund 50 % höher als der Inhalt braucht. Die Luft geht
+            // an den Saldo-Bereich (flex-1 + items-end), der Betrag sitzt also
+            // unten – Name oben, Zahl unten.
+            <article key={a.id} className={`${tileFlush} min-h-64`}>
+              <header className={filledHeader}>
                 <EditableName
                   id={a.id}
                   name={a.name}
                   action={renameSavingsAccount}
                   ariaLabel="Name des Sparkontos"
-                  className="text-sm font-bold uppercase tracking-wide text-sky-900 dark:text-sky-200"
-                  iconClassName="text-sky-900/60 dark:text-sky-200/60"
+                  className={tileHeading}
+                  iconClassName="text-faint"
                 />
                 {canDelete && (
                   <form action={deleteSavingsAccount} className="shrink-0">
                     <input type="hidden" name="id" value={a.id} />
                     <ConfirmSubmit
                       message={`Sparkonto „${a.name}“ wirklich löschen? Alle Blöcke und Einträge dieses Kontos gehen unwiderruflich verloren.`}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sky-900/50 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-sky-200/50 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-faint transition hover:bg-red-500/20 hover:text-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
                     >
                       <IconTrash className="h-4 w-4" />
                     </ConfirmSubmit>
@@ -100,29 +100,26 @@ export default async function SparkontenPage() {
                 )}
               </header>
 
-              {/* Der Saldo-Bereich ist der Link ins Konto. */}
+              {/* Der Saldo-Bereich ist der Link ins Konto. Er ist bewusst vom
+                  Namensfeld getrennt – sonst würde jeder Umbenenn-Versuch
+                  navigieren. */}
               <Link
                 href={`/dashboard/sparkonten/${a.id}`}
-                className="flex flex-1 items-end justify-between gap-2 rounded-b-2xl p-4 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/40 dark:hover:bg-gray-800/50"
+                className="flex flex-1 items-end justify-between gap-2 p-4 transition hover:bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40 sm:p-5"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    Saldo
-                  </p>
+                  <p className="text-xs font-medium text-muted">Saldo</p>
+                  {/* Rot nur bei Minus – das ist keine Akzentfarbe, sondern
+                      eine Aussage über die Zahl. */}
                   <p
-                    className={`mt-1 text-2xl font-bold tabular-nums ${
-                      a.saldo >= 0
-                        ? "text-sky-700 dark:text-sky-300"
-                        : "text-red-600 dark:text-red-400"
+                    className={`mt-1 ${bigNumber} ${
+                      a.saldo >= 0 ? "text-ink" : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {formatEuro(a.saldo)}
                   </p>
                 </div>
-                <span
-                  aria-hidden
-                  className="shrink-0 text-gray-400 dark:text-gray-500"
-                >
+                <span aria-hidden className="shrink-0 text-faint">
                   <IconChevronRight className="h-5 w-5" />
                 </span>
               </Link>

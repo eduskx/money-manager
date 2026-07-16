@@ -46,7 +46,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "Zu hellem Modus wechseln" : "Zu dunklem Modus wechseln"}
       title={dark ? "Heller Modus" : "Dunkler Modus"}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       {dark ? <IconSun /> : <IconMoon />}
     </button>

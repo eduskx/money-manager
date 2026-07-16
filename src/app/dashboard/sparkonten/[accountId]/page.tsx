@@ -13,11 +13,17 @@ import { formatEuro } from "@/lib/format";
 import { TagesgeldBlockCard } from "@/components/TagesgeldBlockCard";
 import { AddCustomBlock } from "@/components/AddCustomBlock";
 import { YearSwitcher } from "@/components/YearSwitcher";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeaderTools } from "@/components/HeaderTools";
+import {
+  bigNumber,
+  headerIconButton,
+  tile,
+  tileAccent,
+  tileHeading,
+} from "@/components/styles";
 import { IconChevronLeft } from "@/components/icons";
 
-// Ein einzelnes Sparkonto mit seinen Blöcken – der Aufbau, den die alte
-// Tagesgeld-Seite hatte, nur jetzt pro Konto.
+// Ein einzelnes Sparkonto mit seinen Blöcken.
 export default async function SparkontoPage({
   params,
   searchParams,
@@ -56,10 +62,8 @@ export default async function SparkontoPage({
   const einnahmenYear = (einnahmen?.entries ?? []).filter((e) => e.year === year);
   const ausgabenYear = (ausgaben?.entries ?? []).filter((e) => e.year === year);
 
-  const saldoPositive = totals.saldo >= 0;
-
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-[1600px] px-3 py-6 sm:px-4 sm:py-8">
         {/* Kopfzeile */}
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -67,72 +71,65 @@ export default async function SparkontoPage({
             <Link
               href="/dashboard/sparkonten"
               aria-label="Zurück zur Sparkonten-Übersicht"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={headerIconButton}
             >
               <IconChevronLeft />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {account.name}
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Konto-Saldo über alle Jahre
-              </p>
+              <h1 className="text-2xl font-semibold text-ink">{account.name}</h1>
+              <p className="text-sm text-muted">Konto-Saldo über alle Jahre</p>
             </div>
           </div>
 
-          <ThemeToggle />
+          <HeaderTools />
         </header>
 
-        {/* Saldo-Übersicht */}
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div
-            className={`rounded-2xl border p-5 shadow-sm ${
-              saldoPositive
-                ? "border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30"
-                : "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
-            }`}
-          >
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Saldo (Kontostand)
-            </p>
-            <p
-              className={`mt-1 text-3xl font-bold tabular-nums ${
-                saldoPositive
-                  ? "text-sky-700 dark:text-sky-300"
-                  : "text-red-600 dark:text-red-400"
-              }`}
-            >
-              {formatEuro(totals.saldo)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Einnahmen {formatEuro(totals.einnahmen)} − Ausgaben{" "}
-              {formatEuro(totals.ausgaben)}
-            </p>
+        {/* Saldo-Übersicht. Der Kontostand ist die gefüllte Kachel – dasselbe
+            Signal wie der Saldo im Dashboard. */}
+        <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={tileAccent}>
+            <h2 className={tileHeading}>Saldo</h2>
+            <p className={`mt-3 ${bigNumber}`}>{formatEuro(totals.saldo)}</p>
+            <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[13px]">
+              <div className="flex items-baseline gap-2">
+                <dt className="text-muted">Einnahmen</dt>
+                <dd className="font-semibold tabular-nums">
+                  {formatEuro(totals.einnahmen)}
+                </dd>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <dt className="text-muted">Ausgaben</dt>
+                <dd className="font-semibold tabular-nums">
+                  {formatEuro(totals.ausgaben)}
+                </dd>
+              </div>
+            </dl>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Saldo exkl. Rücklagen
-            </p>
-            <p className="mt-1 text-3xl font-bold text-gray-900 tabular-nums dark:text-white">
+          <div className={tile}>
+            <h2 className={tileHeading}>Saldo exkl. Rücklagen</h2>
+            <p className={`mt-3 ${bigNumber}`}>
               {formatEuro(totals.saldoExklZurueck)}
             </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Saldo − Rücklagen {formatEuro(totals.zurueckgelegt)}
-            </p>
+            <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[13px]">
+              <div className="flex items-baseline gap-2">
+                <dt className="text-muted">Rücklagen</dt>
+                <dd className="font-semibold tabular-nums">
+                  {formatEuro(totals.zurueckgelegt)}
+                </dd>
+              </div>
+            </dl>
           </div>
         </section>
 
         {/* Blöcke */}
-        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {einnahmen && (
             <TagesgeldBlockCard
               title="Einnahmen"
               blockId={einnahmen.id}
               entries={einnahmenYear}
               sum={sumEntries(einnahmenYear)}
-              headerAccent="bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200"
               addYear={year}
               headerRight={
                 <YearSwitcher
@@ -150,7 +147,6 @@ export default async function SparkontoPage({
               blockId={ausgaben.id}
               entries={ausgabenYear}
               sum={sumEntries(ausgabenYear)}
-              headerAccent="bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-200"
               addYear={year}
               headerRight={
                 <YearSwitcher
@@ -168,7 +164,6 @@ export default async function SparkontoPage({
               blockId={zurueck.id}
               entries={zurueck.entries}
               sum={sumEntries(zurueck.entries)}
-              headerAccent="bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
             />
           )}
 
@@ -179,13 +174,11 @@ export default async function SparkontoPage({
               blockId={b.id}
               entries={b.entries}
               sum={sumEntries(b.entries)}
-              headerAccent="bg-indigo-100 text-indigo-900 dark:bg-indigo-900/40 dark:text-indigo-200"
               deletable
               editableName
             />
           ))}
 
-          {/* Eigenen Block anlegen – sieht aus wie ein Block, nur grau. */}
           <AddCustomBlock accountId={account.id} />
         </section>
       </div>

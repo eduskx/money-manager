@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileSettings } from "@/components/ProfileSettings";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeaderTools } from "@/components/HeaderTools";
+import { headerIconButton } from "@/components/styles";
 import { IconChevronLeft } from "@/components/icons";
 
 export default async function ProfilPage() {
@@ -18,7 +19,7 @@ export default async function ProfilPage() {
   if (!user) redirect("/login");
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-2xl px-3 py-6 sm:px-4 sm:py-8">
         {/* Kopfzeile */}
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -26,21 +27,18 @@ export default async function ProfilPage() {
             <Link
               href="/dashboard"
               aria-label="Zurück zur Monatsansicht"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={headerIconButton}
             >
               <IconChevronLeft />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Profil
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Konto & Einstellungen
-              </p>
+              <h1 className="text-2xl font-semibold text-ink">Profil</h1>
+              <p className="text-sm text-muted">Konto &amp; Einstellungen</p>
             </div>
           </div>
 
-          <ThemeToggle />
+          {/* Kein Profil-Icon – man ist ja schon hier. */}
+          <HeaderTools showProfile={false} />
         </header>
 
         <div className="mt-6">

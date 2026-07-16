@@ -76,7 +76,7 @@ export function EditableName({
             onBlur={save}
             onKeyDown={onKey}
             aria-label={ariaLabel}
-            className={`w-full min-w-0 rounded-md border border-emerald-500 bg-white/80 px-2 py-1 outline-none dark:bg-black/30 ${className}`}
+            className={`w-full min-w-0 rounded-md border border-accent bg-surface px-2 py-1 outline-none ${className}`}
           />
         ) : (
           <span
@@ -93,7 +93,7 @@ export function EditableName({
         onClick={startEdit}
         aria-label={`${ariaLabel} bearbeiten`}
         title="Umbenennen"
-        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:hover:bg-white/10 ${iconClassName}`}
+        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${iconClassName}`}
       >
         <IconPencil className="h-4 w-4" />
       </button>

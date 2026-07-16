@@ -11,14 +11,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Die gewählte Farbwelt der Oberfläche. Der Wert landet als data-palette auf
+// <html>; welche Farben dahinterstecken, steht ausschließlich in globals.css.
+// Hell/Dunkel ist davon unabhängig (dark-Klasse) – jede Welt hat beide Modi.
+enum Palette {
+  GRAPHIT
+  INDIGO
+  MARINE
+  SALBEI
+  PFLAUME
+  SAND
+}
+
 // Ein Benutzerkonto. Das Passwort wird niemals im Klartext gespeichert,
 // sondern nur als bcrypt-Hash (siehe passwordHash).
 model User {
-  id              String           @id @default(cuid())
-  name            String?
-  email           String           @unique
-  passwordHash    String
-  createdAt       DateTime         @default(now())
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  // Farbwelt der Oberfläche. null = der Nutzer hat noch nie eine gewählt –
+  // dann gilt DEFAULT_PALETTE aus src/lib/palette.ts. Bewusst nullbar statt
+  // mit DB-Default: Nur so bleibt „nie gewählt" von „genau diese Farbe
+  // gewählt" unterscheidbar, und der Standard lässt sich später an genau
+  // einer Stelle im Code ändern.
+  palette      Palette?
+  createdAt    DateTime @default(now())
+
   months          Month[]
   savingsAccounts SavingsAccount[]
 }

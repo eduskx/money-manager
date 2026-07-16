@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
-import { Prisma, Section } from "@prisma/client";
+import { Prisma, Section, type Palette } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -16,6 +16,7 @@ import {
   previousMonth,
 } from "@/lib/month";
 import { MAX_SAVINGS_ACCOUNTS } from "@/lib/tagesgeld";
+import { isPalette } from "@/lib/palette";
 
 // ---------------------------------------------------------------------------
 // Registrierung
@@ -96,6 +97,29 @@ async function requireUserId(): Promise<string> {
 
 function isSection(value: string): value is Section {
   return (Object.values(Section) as string[]).includes(value);
+}
+
+// ---------------------------------------------------------------------------
+// Farbwelt
+// ---------------------------------------------------------------------------
+
+// Speichert die Farbwelt am Nutzer. Der PaletteToggle setzt data-palette im
+// Browser bereits selbst – diese Action sorgt dafür, dass die Wahl den nächsten
+// Seitenaufruf und jedes andere Gerät überlebt.
+//
+// Nimmt ausnahmsweise ein Argument statt FormData: Es gibt kein Formular, nur
+// einen Knopf, der einen bekannten Wert weiterreicht.
+export async function setPalette(palette: Palette) {
+  const userId = await requireUserId();
+
+  // Der Wert kommt vom Client – also niemals ungeprüft in die DB schreiben.
+  if (!isPalette(palette)) return;
+
+  await prisma.user.update({ where: { id: userId }, data: { palette } });
+
+  // Das data-palette-Attribut hängt am Root-Layout, deshalb die ganze
+  // Layout-Ebene neu rendern lassen.
+  revalidatePath("/", "layout");
 }
 
 // Nach einer Änderung: Monatsansicht UND Vorlage neu rendern. Der Eintrag kann

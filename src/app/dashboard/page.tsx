@@ -17,8 +17,8 @@ import {
 import { BudgetBoard } from "@/components/BudgetBoard";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { MonthSwitcher } from "@/components/MonthSwitcher";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { IconUser } from "@/components/icons";
+import { HeaderTools } from "@/components/HeaderTools";
+import { headerButton } from "@/components/styles";
 
 const monthYear = new Intl.DateTimeFormat("de-DE", {
   month: "long",
@@ -67,6 +67,7 @@ export default async function DashboardPage({
     { ...computeTotals(flattenEntries(view)), carry: 0, hasPrev: false };
 
   // Anzeigename frisch aus der DB, damit Profil-Änderungen sofort erscheinen.
+  // Die Farbwelt holt sich HeaderTools selbst.
   const profile = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { name: true, email: true },
@@ -74,41 +75,36 @@ export default async function DashboardPage({
   const displayName = profile?.name || profile?.email || session.user.email;
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-[1600px] px-3 py-6 sm:px-4 sm:py-8">
         {/* Kopfzeile */}
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              Meine Finanzen
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Angemeldet als {displayName}
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Marken-Punkt. aria-hidden, weil er nichts sagt, was nicht schon
+                in der Überschrift daneben steht – ein Screenreader würde sonst
+                nur „Euro-Zeichen" vorlesen. */}
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-lg font-bold text-on-accent"
+            >
+              €
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-ink">Meine Finanzen</h1>
+              <p className="truncate text-sm text-muted">
+                Angemeldet als {displayName}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/sparkonten"
-              className="inline-flex h-11 items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
+            <Link href="/dashboard/sparkonten" className={headerButton}>
               Sparkonten
             </Link>
-            <Link
-              href="/dashboard/vorlage"
-              className="inline-flex h-11 items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
+            <Link href="/dashboard/vorlage" className={headerButton}>
               Vorlage
             </Link>
-            <ThemeToggle />
-            <Link
-              href="/dashboard/profil"
-              aria-label="Profil"
-              title="Profil"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              <IconUser className="h-5 w-5" />
-            </Link>
+            <HeaderTools />
           </div>
         </header>
 
@@ -129,7 +125,7 @@ export default async function DashboardPage({
             <input type="hidden" name="month" value={month} />
             <ConfirmSubmit
               message={`„${monthYear.format(new Date(year, month - 1))}“ wirklich löschen? Du springst danach zum Vormonat; neu erstellt wird der Monat erst wieder, wenn du ihn selbst ansteuerst.`}
-              className="rounded-md px-2 py-1.5 font-medium text-gray-500 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-gray-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              className="rounded-md px-2 py-1.5 font-medium text-muted transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:hover:bg-red-950/40 dark:hover:text-red-400"
             >
               Diesen Monat löschen
             </ConfirmSubmit>
@@ -138,7 +134,7 @@ export default async function DashboardPage({
           <form action={deleteAllMonths}>
             <ConfirmSubmit
               message={`Wirklich ALLE Monate löschen? Danach landest du beim aktuellen Monat (${monthYear.format(now)}), der frisch aus der Vorlage erstellt wird. Alle eingetragenen Monatsdaten gehen verloren – die Vorlage bleibt.`}
-              className="rounded-md px-2 py-1.5 font-medium text-gray-500 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-gray-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              className="rounded-md px-2 py-1.5 font-medium text-muted transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:hover:bg-red-950/40 dark:hover:text-red-400"
             >
               Alle Monate löschen
             </ConfirmSubmit>

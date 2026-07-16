@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons";
 
 const arrowClass =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:hover:bg-transparent";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted";
 
 // Jahres-Umschalter für die Blöcke „Einnahmen" und „Ausgaben" eines Kontos.
 // Beide steuern dasselbe Jahr (URL `?year=`).

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { deleteCustomBlock } from "@/lib/actions";
+import { deleteCustomBlock, renameTagesgeldBlock } from "@/lib/actions";
 import { formatEuro } from "@/lib/format";
 import type { TagesgeldEntryView } from "@/lib/tagesgeld";
 import { TagesgeldEntryRow } from "@/components/TagesgeldEntryRow";
@@ -7,17 +7,21 @@ import { TagesgeldAddEntry } from "@/components/TagesgeldAddEntry";
 import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconTrash } from "@/components/icons";
-import { renameTagesgeldBlock } from "@/lib/actions";
+import { sumRow, tile, tileHeading } from "@/components/styles";
 
-// Ein Karten-Block auf der Tagesgeld-Seite: Titel (farbiger Kopf), Einträge,
-// „Zeile hinzufügen" und eine Summenzeile. Optional mit Element rechts im Kopf
-// (z. B. Jahres-Umschalter) und – für eigene Blöcke – einem Löschen-Button.
+// Ein Block auf einer Sparkonto-Seite: Titel, Einträge, „Neuer Eintrag" und
+// eine Summenzeile am Fuß. Optional mit Element rechts im Kopf (Jahres-
+// Umschalter) und – für eigene Blöcke – Stift und Löschen-Knopf.
+//
+// Alle Blöcke sehen bewusst gleich aus; früher hatte jeder einen eigenen
+// farbigen Kopf (grün, orange, amber, indigo). Das vertrug sich nicht mit den
+// Farbwelten – jetzt trägt der Titel die Unterscheidung, wie bei den
+// Ausgaben-Spalten im Dashboard auch.
 export function TagesgeldBlockCard({
   title,
   blockId,
   entries,
   sum,
-  headerAccent,
   addYear = null,
   headerRight,
   deletable = false,
@@ -27,34 +31,29 @@ export function TagesgeldBlockCard({
   blockId: string;
   entries: TagesgeldEntryView[];
   sum: number;
-  headerAccent: string;
   addYear?: number | null;
   headerRight?: ReactNode;
   deletable?: boolean;
-  editableName?: boolean; // eigene Blöcke: Name direkt im Kopf bearbeitbar
+  editableName?: boolean; // eigene Blöcke: Name über den Stift bearbeitbar
 }) {
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <header
-        className={`flex h-14 items-center justify-between gap-2 rounded-t-2xl px-4 ${headerAccent}`}
-      >
+    <section className={tile}>
+      <div className="flex min-h-9 items-center gap-1">
         {editableName ? (
           <EditableName
             id={blockId}
             name={title}
             action={renameTagesgeldBlock}
             ariaLabel="Name des Blocks"
-            className="text-sm font-bold uppercase tracking-wide"
-            iconClassName="text-current opacity-60"
+            className={tileHeading}
+            iconClassName="text-faint"
           />
         ) : (
-          <h2
-            title={title}
-            className="truncate text-sm font-bold uppercase tracking-wide"
-          >
+          <h2 title={title} className={`min-w-0 flex-1 truncate ${tileHeading}`}>
             {title}
           </h2>
         )}
+
         <div className="flex shrink-0 items-center gap-1">
           {headerRight}
           {deletable && (
@@ -62,16 +61,16 @@ export function TagesgeldBlockCard({
               <input type="hidden" name="id" value={blockId} />
               <ConfirmSubmit
                 message={`Block „${title}“ mit allen Einträgen wirklich löschen?`}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-black/5 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-red-400"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-faint transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:hover:bg-red-950/40 dark:hover:text-red-400"
               >
                 <IconTrash className="h-4 w-4" />
               </ConfirmSubmit>
             </form>
           )}
         </div>
-      </header>
+      </div>
 
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+      <div className="mt-3 flex flex-1 flex-col">
         <div className="space-y-0.5">
           {entries.map((e) => (
             <TagesgeldEntryRow
@@ -86,9 +85,13 @@ export function TagesgeldBlockCard({
 
         <TagesgeldAddEntry blockId={blockId} year={addYear} />
 
-        <div className="mt-auto flex items-center justify-between gap-2 rounded-md bg-gray-50 px-2 py-2 text-sm font-semibold text-gray-900 dark:bg-gray-800/60 dark:text-gray-100">
-          <span className="text-gray-600 dark:text-gray-400">Summe</span>
-          <span className="tabular-nums">{formatEuro(sum)}</span>
+        <div className={sumRow}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+            Summe
+          </span>
+          <span className="text-[15px] font-bold tabular-nums">
+            {formatEuro(sum)}
+          </span>
         </div>
       </div>
     </section>

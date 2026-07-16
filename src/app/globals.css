@@ -5,25 +5,295 @@
    (aus localStorage bzw. Systempräferenz) – so gibt es kein Umschalt-Flackern. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ---------------------------------------------------------------------------
+   Farbwelten
+   ---------------------------------------------------------------------------
+   Die Oberfläche kennt KEINE konkreten Farben, sondern nur Rollen:
+
+     --canvas      Seitenhintergrund
+     --surface     Kartenfläche (die Kacheln)
+     --sunken      leicht abgesetzte Fläche in einer Karte (Ausgaben-Spalten)
+     --ink         normale Schrift
+     --muted       Nebentext (Labels, Beschriftungen)
+     --faint       sehr zurückgenommen (Platzhalter, inaktive Icons)
+     --accent      die eine Akzentfarbe der Welt
+     --on-accent   Schrift auf der Akzentfarbe
+     --saldo       Füllung der Saldo-Kachel
+     --on-saldo    Schrift auf der Saldo-Kachel
+     --line        Rahmen/Trenner
+     --line-soft   sehr leichter Trenner innerhalb einer Liste
+
+   Welche Welt gilt, steht als data-palette auf <html> (aus der DB, pro Nutzer).
+   Jede Welt definiert beide Modi: hell = ohne .dark, dunkel = mit .dark.
+
+   Zur Reihenfolge unten: Die Spezifität steigt von :root (0,1,0) über
+   :root[data-palette="…"] (0,2,0) zu :root[data-palette="…"].dark (0,3,0).
+   Deshalb steht der Fallback zuerst – sonst würde er die Welten überschreiben.
+
+   --saldo/--on-saldo sind in jeder Welt gleich --accent/--on-accent des
+   jeweiligen Modus. Sie stehen trotzdem als eigene Rolle da, weil .saldo-scope
+   (ganz unten) --accent im Teilbaum umdefiniert – die Kachel braucht deshalb
+   eine Referenz auf ihre Füllung, die davon unberührt bleibt. */
+
+/* Fallback ohne data-palette = der Standard aus DEFAULT_PALETTE (Graphit).
+   Greift, solange das Attribut fehlt – ändert sich der Standard dort, gehört
+   dieser Block mitgeändert. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f4f4f5;
+  --surface: #ffffff;
+  --sunken: #f0f0f1;
+  --ink: #111113;
+  --muted: #62626b;
+  --faint: #9a9aa2;
+  --accent: #202024;
+  --on-accent: #ffffff;
+  --saldo: #202024;
+  --on-saldo: #ffffff;
+  --line: #e3e3e6;
+  --line-soft: #f0f0f1;
+}
+:root.dark {
+  --canvas: #0c0c0e;
+  --surface: #151517;
+  --sunken: #1b1b1e;
+  --ink: #eeeef0;
+  --muted: #9c9ca4;
+  --faint: #6f6f78;
+  --accent: #ececee;
+  --on-accent: #111113;
+  --saldo: #ececee;
+  --on-saldo: #111113;
+  --line: #26262a;
+  --line-soft: #1d1d20;
 }
 
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+/* --- Graphit: monochrom, die Zahlen sind die einzige Farbe --- */
+:root[data-palette="graphit"] {
+  --canvas: #f4f4f5;
+  --surface: #ffffff;
+  --sunken: #f0f0f1;
+  --ink: #111113;
+  --muted: #62626b;
+  --faint: #9a9aa2;
+  --accent: #202024;
+  --on-accent: #ffffff;
+  --saldo: #202024;
+  --on-saldo: #ffffff;
+  --line: #e3e3e6;
+  --line-soft: #f0f0f1;
+}
+:root[data-palette="graphit"].dark {
+  --canvas: #0c0c0e;
+  --surface: #151517;
+  --sunken: #1b1b1e;
+  --ink: #eeeef0;
+  --muted: #9c9ca4;
+  --faint: #6f6f78;
+  --accent: #ececee;
+  --on-accent: #111113;
+  --saldo: #ececee;
+  --on-saldo: #111113;
+  --line: #26262a;
+  --line-soft: #1d1d20;
 }
 
+/* --- Indigo (Standard) --- */
+:root[data-palette="indigo"] {
+  --canvas: #f4f4fb;
+  --surface: #ffffff;
+  --sunken: #eeeef9;
+  --ink: #16162b;
+  --muted: #5f5f7d;
+  --faint: #9595ad;
+  --accent: #4b46d6;
+  --on-accent: #ffffff;
+  --saldo: #4b46d6;
+  --on-saldo: #ffffff;
+  --line: #e2e2f2;
+  --line-soft: #eeeef9;
+}
+:root[data-palette="indigo"].dark {
+  --canvas: #0d0d1a;
+  --surface: #161628;
+  --sunken: #1c1c33;
+  --ink: #e9e9f6;
+  --muted: #9d9dba;
+  --faint: #71718c;
+  --accent: #7b76f0;
+  --on-accent: #0d0d1a;
+  --saldo: #7b76f0;
+  --on-saldo: #0d0d1a;
+  --line: #26264a;
+  --line-soft: #1d1d38;
+}
+
+/* --- Marine: tiefes Navy, ruhig und seriös --- */
+:root[data-palette="marine"] {
+  --canvas: #f2f5f8;
+  --surface: #ffffff;
+  --sunken: #edf1f6;
+  --ink: #0e1c2b;
+  --muted: #56687d;
+  --faint: #8fa0b2;
+  --accent: #1c3f66;
+  --on-accent: #ffffff;
+  --saldo: #1c3f66;
+  --on-saldo: #ffffff;
+  --line: #dce4ec;
+  --line-soft: #edf1f6;
+}
+:root[data-palette="marine"].dark {
+  --canvas: #0a1017;
+  --surface: #101923;
+  --sunken: #15202c;
+  --ink: #e5edf5;
+  --muted: #91a4b8;
+  --faint: #6a7d90;
+  --accent: #6ba3dd;
+  --on-accent: #08131f;
+  --saldo: #6ba3dd;
+  --on-saldo: #08131f;
+  --line: #1f2e3d;
+  --line-soft: #182430;
+}
+
+/* --- Salbei: gedecktes Grün, weich --- */
+:root[data-palette="salbei"] {
+  --canvas: #f3f6f2;
+  --surface: #ffffff;
+  --sunken: #edf2ea;
+  --ink: #17211a;
+  --muted: #5d6b5f;
+  --faint: #94a396;
+  --accent: #4a7c59;
+  --on-accent: #ffffff;
+  --saldo: #4a7c59;
+  --on-saldo: #ffffff;
+  --line: #dfe7dc;
+  --line-soft: #edf2ea;
+}
+:root[data-palette="salbei"].dark {
+  --canvas: #0b110c;
+  --surface: #121a14;
+  --sunken: #17211a;
+  --ink: #e8f0e9;
+  --muted: #97a999;
+  --faint: #6e7f70;
+  --accent: #6faf80;
+  --on-accent: #08120a;
+  --saldo: #6faf80;
+  --on-saldo: #08120a;
+  --line: #223026;
+  --line-soft: #1a251d;
+}
+
+/* --- Pflaume: dunkles Violett auf hellem Lila --- */
+:root[data-palette="pflaume"] {
+  --canvas: #f8f3f8;
+  --surface: #ffffff;
+  --sunken: #f2e9f2;
+  --ink: #241726;
+  --muted: #6d5a6f;
+  --faint: #a08fa2;
+  --accent: #6d2c63;
+  --on-accent: #ffffff;
+  --saldo: #6d2c63;
+  --on-saldo: #ffffff;
+  --line: #e8dbe8;
+  --line-soft: #f2e9f2;
+}
+:root[data-palette="pflaume"].dark {
+  --canvas: #130d14;
+  --surface: #1c141d;
+  --sunken: #241a26;
+  --ink: #f0e6f1;
+  --muted: #a893aa;
+  --faint: #7d6a80;
+  --accent: #b061a4;
+  --on-accent: #110610;
+  --saldo: #b061a4;
+  --on-saldo: #110610;
+  --line: #2e2130;
+  --line-soft: #231927;
+}
+
+/* --- Sand: warme Neutraltöne, Espresso als Akzent --- */
+:root[data-palette="sand"] {
+  --canvas: #f6f4f0;
+  --surface: #ffffff;
+  --sunken: #f0ece5;
+  --ink: #201d18;
+  --muted: #6b6459;
+  --faint: #a09889;
+  --accent: #4a4136;
+  --on-accent: #ffffff;
+  --saldo: #4a4136;
+  --on-saldo: #ffffff;
+  --line: #e6e1d8;
+  --line-soft: #f0ece5;
+}
+:root[data-palette="sand"].dark {
+  --canvas: #121110;
+  --surface: #1b1917;
+  --sunken: #22201d;
+  --ink: #efeae2;
+  --muted: #a89f92;
+  --faint: #7d7568;
+  --accent: #cbb99a;
+  --on-accent: #191510;
+  --saldo: #cbb99a;
+  --on-saldo: #191510;
+  --line: #2c2925;
+  --line-soft: #211f1c;
+}
+
+/* `inline` ist hier entscheidend: Tailwind schreibt in die Utilities direkt
+   `var(--ink)` statt `var(--color-ink)`. Dadurch lassen sich die Rollen in
+   einem Teilbaum umdefinieren (siehe .saldo-scope) und alle Kind-Elemente
+   ziehen automatisch nach – ohne dass eine Komponente davon wissen muss. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-saldo: var(--saldo);
+  --color-on-saldo: var(--on-saldo);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Die Saldo-Kachel ist als einzige komplett mit einer Farbe gefüllt. Statt in
+   jeder Kind-Komponente eine Sondervariante zu bauen, definieren wir hier die
+   Rollen für diesen Teilbaum neu: „Schrift" heißt drinnen --on-saldo, Flächen
+   und Linien werden zu durchscheinenden Abstufungen davon. EntryRow & Co.
+   funktionieren dadurch unverändert – sie kennen weiterhin nur die Rollen. */
+.saldo-scope {
+  --surface: color-mix(in srgb, var(--on-saldo) 14%, transparent);
+  --sunken: color-mix(in srgb, var(--on-saldo) 10%, transparent);
+  --ink: var(--on-saldo);
+  --muted: color-mix(in srgb, var(--on-saldo) 75%, transparent);
+  --faint: color-mix(in srgb, var(--on-saldo) 50%, transparent);
+  --accent: var(--on-saldo);
+  --on-accent: var(--saldo);
+  --line: color-mix(in srgb, var(--on-saldo) 24%, transparent);
+  --line-soft: color-mix(in srgb, var(--on-saldo) 15%, transparent);
+}
+
+/* Die Rinne des Anteilsbalkens. Bewusst aus --ink gemischt statt --line: Der
+   Balken sitzt auf --sunken, und --line liegt dafür zu dicht daneben. */
+.bar-track {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
 }

@@ -11,7 +11,8 @@ import {
 } from "@/lib/month";
 import { BudgetBoard } from "@/components/BudgetBoard";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeaderTools } from "@/components/HeaderTools";
+import { headerIconButton } from "@/components/styles";
 import { IconChevronLeft } from "@/components/icons";
 
 // Die Vorlage: gleiche Struktur wie ein Monat, dient aber als Grundlage für
@@ -26,7 +27,7 @@ export default async function VorlagePage() {
   const totals = computeTotals(flattenEntries(view));
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-[1600px] px-3 py-6 sm:px-4 sm:py-8">
         {/* Kopfzeile */}
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -34,24 +35,22 @@ export default async function VorlagePage() {
             <Link
               href="/dashboard"
               aria-label="Zurück zur Monatsansicht"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={headerIconButton}
             >
               <IconChevronLeft />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Vorlage
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h1 className="text-2xl font-semibold text-ink">Vorlage</h1>
+              <p className="text-sm text-muted">
                 Grundlage für jeden neuen Monat
               </p>
             </div>
           </div>
 
-          <ThemeToggle />
+          <HeaderTools />
         </header>
 
-        <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+        <div className="mt-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
           <p>
             Änderungen hier werden automatisch auf alle Monate übertragen, die du{" "}
             <strong>noch nicht selbst bearbeitet</strong> hast (auch bereits
