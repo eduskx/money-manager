@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { GUEST_TTL_DAYS } from "@/lib/guest";
+import { getSessionUser } from "@/lib/user";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { HeaderTools } from "@/components/HeaderTools";
 import { headerIconButton } from "@/components/styles";
@@ -12,11 +13,18 @@ export default async function ProfilPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { name: true, email: true },
-  });
+  // Kostet keine eigene Abfrage – siehe getSessionUser.
+  const user = await getSessionUser();
   if (!user) redirect("/login");
+
+  // Ablaufdatum eines Gast-Kontos. Bewusst hier formatiert und als Text
+  // weitergegeben: Der Server kennt die Zeitzone, der Client würde beim
+  // Hydrieren sonst ein anderes Datum rendern als der Server.
+  const guestExpiresAt = user.isGuest
+    ? new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(
+        new Date(user.createdAt.getTime() + GUEST_TTL_DAYS * 24 * 60 * 60 * 1000),
+      )
+    : null;
 
   return (
     <main className="min-h-screen bg-canvas">
@@ -42,7 +50,12 @@ export default async function ProfilPage() {
         </header>
 
         <div className="mt-6">
-          <ProfileSettings name={user.name ?? ""} email={user.email} />
+          <ProfileSettings
+            name={user.name ?? ""}
+            email={user.email}
+            isGuest={user.isGuest}
+            guestExpiresAt={guestExpiresAt}
+          />
         </div>
       </div>
     </main>

@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
-import { authenticate } from "@/lib/actions";
+import { authenticate, loginAsGuest } from "@/lib/actions";
 import {
   fieldClass,
   labelClass,
   primaryButton,
+  secondaryButton,
   tile,
 } from "@/components/styles";
 
@@ -15,6 +16,23 @@ export default function LoginPage() {
     authenticate,
     undefined,
   );
+  // Eigener Zustand: Ein Fehler beim Gast-Zugang hat nichts mit einem
+  // falschen Passwort zu tun und soll die Anmeldung nicht kommentieren.
+  //
+  // Kein useActionState wie oben, weil es hier kein Formular gibt – der Knopf
+  // schickt nichts mit. Deshalb Transition + eigener Fehler-State.
+  const [guestError, setGuestError] = useState<string>();
+  const [guestPending, startGuest] = useTransition();
+
+  function startGuestLogin() {
+    setGuestError(undefined);
+    startGuest(async () => {
+      // Klappt es, endet der Aufruf im Redirect aufs Dashboard und die Zeile
+      // danach wird nie erreicht.
+      const error = await loginAsGuest();
+      if (error) setGuestError(error);
+    });
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
@@ -79,6 +97,34 @@ export default function LoginPage() {
             {isPending ? "Anmelden …" : "Anmelden"}
           </button>
         </form>
+
+        {/* Gast-Zugang: bewusst als Zweitweg abgesetzt, nicht als
+            gleichwertige Alternative zum Anmelden. */}
+        <div className="mt-6 flex items-center gap-3">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-xs font-medium uppercase tracking-wider text-faint">
+            oder
+          </span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <button
+          type="button"
+          onClick={startGuestLogin}
+          disabled={guestPending}
+          className={`${secondaryButton} mt-4 w-full`}
+        >
+          {guestPending ? "Wird vorbereitet …" : "Als Gast anmelden"}
+        </button>
+        <p className="mt-2 text-center text-xs text-faint">
+          Ausprobieren ohne E-Mail. Du startest mit Beispieldaten, die du frei
+          verändern kannst.
+        </p>
+        {guestError && (
+          <p className="mt-2 text-center text-sm text-red-600 dark:text-red-400">
+            {guestError}
+          </p>
+        )}
 
         <p className="mt-6 text-center text-sm text-muted">
           Noch kein Konto?{" "}
