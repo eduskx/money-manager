@@ -20,7 +20,7 @@ model User {
   passwordHash    String
   createdAt       DateTime         @default(now())
   months          Month[]
-  tagesgeldBlocks TagesgeldBlock[]
+  savingsAccounts SavingsAccount[]
 }
 
 // Grober Abschnitt eines Eintrags. Einnahmen und Abzüge sind feste Blöcke;
@@ -112,6 +112,22 @@ enum TagesgeldKind {
   CUSTOM // frei angelegte Blöcke, saldoneutral
 }
 
+// Ein Sparkonto (z. B. „Tagesgeld"). Jeder User hat mindestens eins; bis zu
+// MAX_SAVINGS_ACCOUNTS (5) sind möglich. Die Übersicht liegt unter
+// /dashboard/sparkonten, das Konto selbst unter /dashboard/sparkonten/[id].
+model SavingsAccount {
+  id        String   @id @default(cuid())
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blocks TagesgeldBlock[]
+
+  @@index([userId])
+}
+
 model TagesgeldBlock {
   id        String           @id @default(cuid())
   kind      TagesgeldKind
@@ -120,10 +136,10 @@ model TagesgeldBlock {
   createdAt DateTime         @default(now())
   entries   TagesgeldEntry[]
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+  account   SavingsAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([accountId])
 }
 
 model TagesgeldEntry {

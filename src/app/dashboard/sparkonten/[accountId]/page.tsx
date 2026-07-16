@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { TagesgeldKind } from "@prisma/client";
 
 import { auth } from "@/auth";
 import {
   computeTagesgeldTotals,
   getOrCreateTagesgeldBlocks,
+  getSavingsAccount,
   sumEntries,
 } from "@/lib/tagesgeld";
 import { formatEuro } from "@/lib/format";
@@ -15,13 +16,21 @@ import { YearSwitcher } from "@/components/YearSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { IconChevronLeft } from "@/components/icons";
 
-export default async function TagesgeldPage({
+// Ein einzelnes Sparkonto mit seinen Blöcken – der Aufbau, den die alte
+// Tagesgeld-Seite hatte, nur jetzt pro Konto.
+export default async function SparkontoPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ accountId: string }>;
   searchParams: Promise<{ year?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const { accountId } = await params;
+  const account = await getSavingsAccount(session.user.id, accountId);
+  if (!account) notFound();
 
   // Jahr aus der URL; weiter als das echte aktuelle Jahr geht es nicht.
   const maxYear = new Date().getFullYear();
@@ -30,9 +39,11 @@ export default async function TagesgeldPage({
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     year = maxYear;
   }
-  if (year > maxYear) redirect(`/dashboard/tagesgeld?year=${maxYear}`);
+  if (year > maxYear) {
+    redirect(`/dashboard/sparkonten/${accountId}?year=${maxYear}`);
+  }
 
-  const blocks = await getOrCreateTagesgeldBlocks(session.user.id);
+  const blocks = await getOrCreateTagesgeldBlocks(account.id);
   const totals = computeTagesgeldTotals(blocks);
 
   const einnahmen = blocks.find((b) => b.kind === TagesgeldKind.EINNAHMEN);
@@ -54,15 +65,15 @@ export default async function TagesgeldPage({
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
-              aria-label="Zurück zur Monatsansicht"
+              href="/dashboard/sparkonten"
+              aria-label="Zurück zur Sparkonten-Übersicht"
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <IconChevronLeft />
             </Link>
             <div>
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Tagesgeld
+                {account.name}
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Konto-Saldo über alle Jahre
@@ -123,7 +134,13 @@ export default async function TagesgeldPage({
               sum={sumEntries(einnahmenYear)}
               headerAccent="bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200"
               addYear={year}
-              headerRight={<YearSwitcher year={year} maxYear={maxYear} />}
+              headerRight={
+                <YearSwitcher
+                  accountId={account.id}
+                  year={year}
+                  maxYear={maxYear}
+                />
+              }
             />
           )}
 
@@ -135,7 +152,13 @@ export default async function TagesgeldPage({
               sum={sumEntries(ausgabenYear)}
               headerAccent="bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-200"
               addYear={year}
-              headerRight={<YearSwitcher year={year} maxYear={maxYear} />}
+              headerRight={
+                <YearSwitcher
+                  accountId={account.id}
+                  year={year}
+                  maxYear={maxYear}
+                />
+              }
             />
           )}
 
@@ -163,7 +186,7 @@ export default async function TagesgeldPage({
           ))}
 
           {/* Eigenen Block anlegen – sieht aus wie ein Block, nur grau. */}
-          <AddCustomBlock />
+          <AddCustomBlock accountId={account.id} />
         </section>
       </div>
     </main>

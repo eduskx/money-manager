@@ -4,9 +4,10 @@ import { formatEuro } from "@/lib/format";
 import type { TagesgeldEntryView } from "@/lib/tagesgeld";
 import { TagesgeldEntryRow } from "@/components/TagesgeldEntryRow";
 import { TagesgeldAddEntry } from "@/components/TagesgeldAddEntry";
-import { TagesgeldBlockName } from "@/components/TagesgeldBlockName";
+import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconTrash } from "@/components/icons";
+import { renameTagesgeldBlock } from "@/lib/actions";
 
 // Ein Karten-Block auf der Tagesgeld-Seite: Titel (farbiger Kopf), Einträge,
 // „Zeile hinzufügen" und eine Summenzeile. Optional mit Element rechts im Kopf
@@ -38,7 +39,14 @@ export function TagesgeldBlockCard({
         className={`flex h-14 items-center justify-between gap-2 rounded-t-2xl px-4 ${headerAccent}`}
       >
         {editableName ? (
-          <TagesgeldBlockName blockId={blockId} name={title} />
+          <EditableName
+            id={blockId}
+            name={title}
+            action={renameTagesgeldBlock}
+            ariaLabel="Name des Blocks"
+            className="text-sm font-bold uppercase tracking-wide"
+            iconClassName="text-current opacity-60"
+          />
         ) : (
           <h2
             title={title}

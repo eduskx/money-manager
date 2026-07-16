@@ -89,10 +89,10 @@ export default async function DashboardPage({
 
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard/tagesgeld"
+              href="/dashboard/sparkonten"
               className="inline-flex h-11 items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Tagesgeld
+              Sparkonten
             </Link>
             <Link
               href="/dashboard/vorlage"
