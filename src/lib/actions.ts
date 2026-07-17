@@ -199,14 +199,19 @@ function revalidateBudget() {
 //  - War es die Vorlage? Dann die Vorlage auf passende Monate anwenden.
 //  - War es ein echter Monat? Dann ihn als „bearbeitet" markieren, damit ihn
 //    künftige Vorlagen-Änderungen nicht mehr überschreiben.
+//
+// `alreadyMarked`: Manche Aufrufer setzen `customized` schon selbst – im selben
+// Schreibvorgang, mit dem sie die Zeile anlegen. Die sparen sich damit eine
+// eigene Rundreise und sagen hier Bescheid, damit sie nicht doppelt läuft.
 async function afterEntryChange(
   userId: string,
   monthId: string,
   isTemplate: boolean,
+  opts: { alreadyMarked?: boolean } = {},
 ) {
   if (isTemplate) {
     await applyTemplateToMonths(userId);
-  } else {
+  } else if (!opts.alreadyMarked) {
     await prisma.month.update({
       where: { id: monthId },
       data: { customized: true },
@@ -229,44 +234,74 @@ export async function addEntry(formData: FormData) {
   // Ohne Bezeichnung legen wir keine Zeile an; der Betrag darf 0/leer sein.
   if (!monthId || !isSection(sectionRaw) || !label) return;
 
-  // Besitz prüfen: Gehört der Monat/​die Vorlage diesem User?
-  const month = await prisma.month.findFirst({
-    where: { id: monthId, userId },
-    select: { id: true, isTemplate: true },
-  });
-  if (!month) return;
-
-  // Ausgaben gehören immer in eine Spalte – und die muss zu diesem Monat gehören.
   const isExpense = sectionRaw === Section.EXPENSE;
-  if (isExpense) {
-    if (!columnId) return;
-    const column = await prisma.expenseColumn.findFirst({
-      where: { id: columnId, monthId },
-      select: { id: true },
-    });
-    if (!column) return;
-  }
+  if (isExpense && !columnId) return;
 
-  // Neue Zeile ans Ende hängen – bei Ausgaben innerhalb ihrer Spalte.
-  const last = await prisma.entry.aggregate({
-    where: isExpense ? { monthId, columnId } : { monthId, section: sectionRaw },
-    _max: { position: true },
-  });
+  // Besitzprüfung und Positionssuche wissen nichts voneinander – also
+  // nebeneinander. Jede Rundreise zur DB kostet Zeit; zwei parallel kosten so
+  // viel wie eine.
+  //
+  // Bei Ausgaben prüft die Spalten-Abfrage gleich beides mit: Gehört die Spalte
+  // zu diesem Monat, und gehört der Monat diesem User? Das ist über die
+  // Beziehung genauso sicher wie zwei getrennte Abfragen – nur eben in einer.
+  const [owner, last] = await Promise.all([
+    isExpense
+      ? prisma.expenseColumn.findFirst({
+          where: { id: columnId!, month: { id: monthId, userId } },
+          select: { month: { select: { isTemplate: true } } },
+        })
+      : prisma.month.findFirst({
+          where: { id: monthId, userId },
+          select: { isTemplate: true },
+        }),
+    prisma.entry.aggregate({
+      where: isExpense ? { monthId, columnId } : { monthId, section: sectionRaw },
+      _max: { position: true },
+    }),
+  ]);
+
+  if (!owner) return;
+  const isTemplate =
+    "month" in owner ? owner.month.isTemplate : owner.isTemplate;
+
   const position = (last._max.position ?? -1) + 1;
 
-  await prisma.entry.create({
-    data: {
-      monthId,
-      section: sectionRaw,
-      columnId: isExpense ? columnId : null,
-      label,
-      amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
-      formula,
-      position,
-    },
-  });
+  // Zeile anlegen UND den Monat als bearbeitet markieren – in einem einzigen
+  // verschachtelten Schreibvorgang statt in zweien. Bei der Vorlage bleibt
+  // `customized` unangetastet (dort gibt es das Flag nicht sinnvoll), deshalb
+  // die Fallunterscheidung.
+  if (isTemplate) {
+    await prisma.entry.create({
+      data: {
+        monthId,
+        section: sectionRaw,
+        columnId: isExpense ? columnId : null,
+        label,
+        amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
+        formula,
+        position,
+      },
+    });
+  } else {
+    await prisma.month.update({
+      where: { id: monthId },
+      data: {
+        customized: true,
+        entries: {
+          create: {
+            section: sectionRaw,
+            columnId: isExpense ? columnId : null,
+            label,
+            amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
+            formula,
+            position,
+          },
+        },
+      },
+    });
+  }
 
-  await afterEntryChange(userId, monthId, month.isTemplate);
+  await afterEntryChange(userId, monthId, isTemplate, { alreadyMarked: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +463,13 @@ export async function deleteCurrentMonth(formData: FormData) {
 
 // Die Vorlage leeren. Da unberührte Monate die Vorlage spiegeln, werden diese
 // dadurch ebenfalls geleert; bearbeitete Monate (customized = true) bleiben.
+// Leert die Vorlage vollständig: Einträge UND Ausgaben-Spalten.
+//
+// Danach hat die Vorlage keine Spalte mehr – auch keine „Fixkosten". Das ist
+// Absicht: „leeren" soll leeren. Eine neue legst du über „Neue Spalte" an.
+//
+// Der anschließende Sync trägt das auf alle unberührten Monate weiter; die
+// verlieren ihre Spalten also mit. Bearbeitete Monate bleiben unberührt.
 export async function clearTemplate() {
   const userId = await requireUserId();
 
@@ -435,8 +477,18 @@ export async function clearTemplate() {
     where: { userId, isTemplate: true },
     select: { id: true },
   });
+
   if (template) {
-    await prisma.entry.deleteMany({ where: { monthId: template.id } });
+    // Eine Transaktion: Eine Vorlage ohne Einträge, aber mit Spalten (oder
+    // umgekehrt) wäre ein Zwischenzustand, den niemand sehen soll.
+    //
+    // Einträge zuerst – sie hängen per Fremdschlüssel an den Spalten. Die
+    // Einnahmen und Abzüge haben gar keine Spalte (columnId ist null), die
+    // würde das Löschen der Spalten also ohnehin nicht mitnehmen.
+    await prisma.$transaction(async (tx) => {
+      await tx.entry.deleteMany({ where: { monthId: template.id } });
+      await tx.expenseColumn.deleteMany({ where: { monthId: template.id } });
+    });
   }
 
   await applyTemplateToMonths(userId);

@@ -37,6 +37,37 @@ export function BudgetBoard({
   const share = (amount: number) =>
     totals.income > 0 ? (amount / totals.income) * 100 : 0;
 
+  // Wie breit ist EINE Ausgaben-Spalte?
+  //
+  // Eine Regel, aus der sich alles ergibt: Nebeneinander stehen nur so viele
+  // Spalten, dass jede mindestens MIN_COLUMN_WIDTH (350 px) breit bleibt –
+  // höchstens aber drei. Daraus folgen die Schwellen:
+  //
+  //   zwei nebeneinander  ab 2*350 + 1*16 =  716 px Kachelbreite
+  //   drei nebeneinander  ab 3*350 + 2*16 = 1082 px Kachelbreite
+  //
+  // Darunter steht jede Spalte auf voller Breite. Ein hartes `min-width` wäre
+  // hier falsch: Auf einem schmalen Handy sind gar keine 350 px da, und die
+  // Seite würde seitlich überlaufen. 350 px ist eine Bedingung dafür, ob
+  // nebeneinander gestellt wird – keine Größe, die erzwungen werden kann.
+  //
+  // Warum die Anzahl mitzählt: Bei zwei Spalten sollen sich beide den Platz
+  // teilen, statt ein Drittel freizuhalten. Deshalb hängt die Breite an
+  // `min(Anzahl, 3)` und nicht allein an der Kachelbreite.
+  //
+  // Eine einzelne Spalte bekommt höchstens die Hälfte – sonst zöge sie sich
+  // über die ganze Kachel, und eine Zeile „Miete … 451,00" mit einem halben
+  // Meter Weiß dazwischen liest sich schlecht.
+  //
+  // Die Klassen stehen absichtlich ausgeschrieben da, statt aus Bausteinen
+  // zusammengesetzt zu werden: Tailwind durchsucht den QUELLTEXT nach
+  // Klassennamen. Was erst zur Laufzeit entsteht, sieht es nicht – und
+  // erzeugt das CSS dafür nicht.
+  const columnWidth =
+    view.columns.length <= 2
+      ? "w-full @min-[716px]:w-[calc((100%-1rem)/2)]"
+      : "w-full @min-[716px]:w-[calc((100%-1rem)/2)] @min-[1082px]:w-[calc((100%-2rem)/3)]";
+
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       {/* --- Einnahmen: PC oben links, Handy unter dem Saldo --- */}
@@ -112,8 +143,10 @@ export function BudgetBoard({
         </div>
       </section>
 
-      {/* --- Ausgaben: über die volle Breite --- */}
-      <section className={`${tile} order-3 lg:col-span-2`}>
+      {/* --- Ausgaben: über die volle Breite ---
+          `@container` macht diese Kachel zum Bezugspunkt für die
+          Container-Abfrage weiter unten. */}
+      <section className={`${tile} @container order-3 lg:col-span-2`}>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 items-center gap-3">
             <h2 className={tileHeading}>Ausgaben</h2>
@@ -126,21 +159,43 @@ export function BudgetBoard({
           </span>
         </div>
 
-        {/* auto-fit: passt sich an 1–5 Spalten und jede Breite an. */}
-        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3 sm:gap-4">
+        {/* Flexbox statt Grid – und das ist der Kern.
+
+            Mit `grid-cols-3` legt das Raster IMMER drei Spuren an, auch wenn
+            es nur zwei Spalten gibt: Die dritte bleibt leer, und die zwei
+            stehen schmal nebeneinander statt sich den Platz zu teilen. Bei
+            Flexbox gibt es keine leeren Spuren – die Breite steht an den
+            Elementen selbst, und die richtet sich danach, wie viele es gibt.
+
+            `justify-center` erledigt nebenbei die zweite Regel: Volle Reihen
+            füllen die Breite exakt aus (dort bewirkt es nichts), eine
+            angebrochene letzte Reihe steht automatisch mittig.
+
+            Alle Schwellen sind CONTAINER-Abfragen, keine Geräte-Abfragen:
+            Entscheidend ist, wie breit die Ausgaben-Kachel wirklich ist –
+            nicht der Bildschirm. Läge sie eines Tages in einer schmalen
+            Spalte, stimmte eine `sm:`-Regel nicht mehr, diese schon.
+
+            Einheitlicher `gap-4`, damit die Rechnungen unten exakt aufgehen –
+            vorher war er auf dem Handy 4 px kleiner, was die Breiten um
+            Bruchteile verzogen hätte. */}
+        <div className="mt-4 flex flex-wrap justify-center gap-4">
           {view.columns.map((c) => {
             const sum = sumOf(c.entries);
             return (
-              <BudgetColumn
-                key={c.id}
-                section="EXPENSE"
-                column={{ id: c.id, name: c.name }}
-                entries={c.entries}
-                monthId={monthId}
-                sum={sum}
-                share={share(sum)}
-                collapsible
-              />
+              // Der Wrapper trägt nur die Breite. `min-w-0`, sonst kann der
+              // Inhalt ihn auseinanderdrücken.
+              <div key={c.id} className={`min-w-0 ${columnWidth}`}>
+                <BudgetColumn
+                  section="EXPENSE"
+                  column={{ id: c.id, name: c.name }}
+                  entries={c.entries}
+                  monthId={monthId}
+                  sum={sum}
+                  share={share(sum)}
+                  collapsible
+                />
+              </div>
             );
           })}
         </div>

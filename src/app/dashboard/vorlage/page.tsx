@@ -85,7 +85,7 @@ export default async function VorlagePage() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <form action={clearTemplate}>
               <ConfirmSubmit
-                message="Vorlage wirklich leeren? Alle unberührten Monate werden dadurch ebenfalls geleert. Bearbeitete Monate bleiben erhalten."
+                message="Vorlage wirklich leeren? Alle Einträge UND alle Ausgaben-Spalten werden gelöscht. Alle unberührten Monate werden dadurch ebenfalls geleert. Bearbeitete Monate bleiben erhalten."
                 className="inline-flex h-10 items-center rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
               >
                 Vorlage leeren
