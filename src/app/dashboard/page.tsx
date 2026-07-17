@@ -54,9 +54,18 @@ export default async function DashboardPage({
     redirect(`/dashboard?y=${maxMonthValue.year}&m=${maxMonthValue.month}`);
   }
 
-  // Monat holen oder aus der Vorlage anlegen. Muss zuerst laufen: Die Kette
-  // unten soll den Monat mitzählen, auch wenn er gerade erst entsteht.
-  const budgetMonth = await getOrCreateMonth(session.user.id, year, month);
+  // Nutzer und Monat holen. Der Nutzer kostet dank getSessionUser keine eigene
+  // Abfrage (das Layout hat ihn in derselben Anfrage schon geholt), liefert
+  // aber `carryOver` – und das braucht die Kette unten.
+  //
+  // getOrCreateMonth muss vor der Kette laufen: Sie soll den Monat mitzählen,
+  // auch wenn er gerade erst entsteht.
+  const [profile, budgetMonth] = await Promise.all([
+    getSessionUser(),
+    getOrCreateMonth(session.user.id, year, month),
+  ]);
+  const displayName = profile?.name || profile?.email || session.user.email;
+  const carryOver = profile?.carryOver ?? true;
 
   // Diese beiden wissen nichts voneinander – also nebeneinander statt
   // nacheinander. Kostet damit die Zeit der langsameren statt die Summe.
@@ -66,19 +75,13 @@ export default async function DashboardPage({
   //           sowie income/restbetrag inkl. Übertrag
   const [view, chain] = await Promise.all([
     loadMonthView(budgetMonth.id),
-    loadMonthChain(session.user.id),
+    loadMonthChain(session.user.id, carryOver),
   ]);
 
   const comp =
     chain.get(monthKey(year, month)) ??
     // Fallback (sollte nach getOrCreateMonth nicht vorkommen): ohne Übertrag.
     { ...computeTotals(flattenEntries(view)), carry: 0, hasPrev: false };
-
-  // Anzeigename frisch aus der DB, damit Profil-Änderungen sofort erscheinen.
-  // Kostet keine eigene Abfrage: Das Layout hat den Nutzer in derselben
-  // Anfrage schon geholt, getSessionUser gibt ihn nur weiter.
-  const profile = await getSessionUser();
-  const displayName = profile?.name || profile?.email || session.user.email;
 
   return (
     <main className="min-h-screen bg-canvas">
@@ -103,7 +106,12 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* `w-full` auf dem Handy: Die Knopfzeile bekommt eine eigene Zeile
+              unter der Marke – nur so ist Platz, und das ml-auto in
+              HeaderTools schiebt die drei Icons an den rechten Rand.
+              Ab sm wieder `w-auto`, dann sitzt die Gruppe wie gehabt kompakt
+              rechts neben der Marke. */}
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Link href="/dashboard/sparkonten" className={headerButton}>
               Sparkonten
             </Link>

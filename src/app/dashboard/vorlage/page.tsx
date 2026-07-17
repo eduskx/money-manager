@@ -9,7 +9,9 @@ import {
   getOrCreateTemplate,
   loadMonthView,
 } from "@/lib/month";
+import { getSessionUser } from "@/lib/user";
 import { BudgetBoard } from "@/components/BudgetBoard";
+import { CarryOverSwitch } from "@/components/CarryOverSwitch";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { HeaderTools } from "@/components/HeaderTools";
 import { headerIconButton } from "@/components/styles";
@@ -22,7 +24,12 @@ export default async function VorlagePage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const template = await getOrCreateTemplate(session.user.id);
+  const [user, template] = await Promise.all([
+    getSessionUser(),
+    getOrCreateTemplate(session.user.id),
+  ]);
+  if (!user) redirect("/login");
+
   const view = await loadMonthView(template.id);
   const totals = computeTotals(flattenEntries(view));
 
@@ -55,10 +62,27 @@ export default async function VorlagePage() {
             Änderungen hier werden automatisch auf alle Monate übertragen, die du{" "}
             <strong>noch nicht selbst bearbeitet</strong> hast (auch bereits
             angelegte, leere Monate). Sobald du in einem Monat etwas änderst,
-            bleibt dieser von der Vorlage unabhängig. „Vormonat“ wird automatisch
-            beim Monatswechsel berechnet.
+            bleibt dieser von der Vorlage unabhängig.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/* Der Text sagt, was der Schalter daneben gerade bewirkt – sonst
+              würde hier eine Regel behauptet, die abgeschaltet ist. */}
+          <p className="mt-2">
+            {user.carryOver ? (
+              <>
+                <strong>Vormonat wird übertragen:</strong> Was in einem Monat
+                übrig bleibt, zählt im nächsten als Einnahme mit. Der Wert wird
+                bei jedem Aufruf neu berechnet – änderst du einen früheren
+                Monat, ziehen alle folgenden automatisch nach.
+              </>
+            ) : (
+              <>
+                <strong>Vormonat wird nicht übertragen:</strong> Jeder Monat
+                steht für sich, die Zeile „Vormonat“ entfällt. Es geht dabei
+                nichts verloren – schaltest du wieder ein, ist alles wie zuvor.
+              </>
+            )}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <form action={clearTemplate}>
               <ConfirmSubmit
                 message="Vorlage wirklich leeren? Alle unberührten Monate werden dadurch ebenfalls geleert. Bearbeitete Monate bleiben erhalten."
@@ -67,6 +91,7 @@ export default async function VorlagePage() {
                 Vorlage leeren
               </ConfirmSubmit>
             </form>
+            <CarryOverSwitch enabled={user.carryOver} />
           </div>
         </div>
 

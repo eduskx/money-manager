@@ -24,8 +24,12 @@ export async function HeaderTools({
 }) {
   const user = await getSessionUser();
 
+  // `ml-auto` schiebt die Icons ans rechte Ende ihrer Zeile – auch dann, wenn
+  // die Knöpfe daneben (Sparkonten, Vorlage, Konto hinzufügen) auf dem Handy
+  // in dieselbe Zeile umbrechen. Sie stehen dadurch immer rechts, mit Abstand
+  // zum Rest, statt direkt daran zu kleben.
   return (
-    <div className="flex items-center gap-2">
+    <div className="ml-auto flex shrink-0 items-center gap-2">
       <ThemeToggle />
       <PaletteToggle palette={user?.palette ?? DEFAULT_PALETTE} />
       {showProfile && (

@@ -318,6 +318,11 @@ function monthKey(year: number, month: number): string {
  * Restbetrag jeweils als „Saldo aus Vormonat" in den direkt folgenden Monat.
  * Der Übertrag greift nur zwischen KALENDARISCH aufeinanderfolgenden Monaten;
  * bei Lücken beginnt die Kette neu (carry = 0).
+ *
+ * `carryOver = false`: Der Nutzer hat den Übertrag abgeschaltet – dann steht
+ * jeder Monat für sich. Der Schalter greift bewusst HIER und nicht erst in der
+ * Anzeige: Sonst würde die Zeile zwar verschwinden, der Übertrag aber weiter
+ * in income und restbetrag stecken, und die Zahlen wären falsch.
  */
 export function computeChain(
   months: {
@@ -325,6 +330,7 @@ export function computeChain(
     month: number;
     entries: { section: Section; amount: number }[];
   }[],
+  carryOver = true,
 ): Map<string, MonthComputation> {
   const sorted = [...months].sort(
     (a, b) => a.year - b.year || a.month - b.month,
@@ -338,7 +344,10 @@ export function computeChain(
     const p = previousMonth(m.year, m.month);
     const previous = prev; // pro Durchlauf festhalten (bricht Typ-Zirkularität)
     const hasPrev: boolean =
-      previous !== null && p.year === previous.year && p.month === previous.month;
+      carryOver &&
+      previous !== null &&
+      p.year === previous.year &&
+      p.month === previous.month;
     const carry: number = previous !== null && hasPrev ? previous.restbetrag : 0;
 
     const income = base.income + carry;
@@ -364,6 +373,7 @@ export function computeChain(
  */
 export async function loadMonthChain(
   userId: string,
+  carryOver = true,
 ): Promise<Map<string, MonthComputation>> {
   const months = await prisma.month.findMany({
     where: { userId, isTemplate: false, year: { not: null }, month: { not: null } },
@@ -379,6 +389,7 @@ export async function loadMonthChain(
         amount: Number(e.amount),
       })),
     })),
+    carryOver,
   );
 }
 

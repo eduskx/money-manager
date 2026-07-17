@@ -15,10 +15,10 @@ import { HeaderTools } from "@/components/HeaderTools";
 import {
   bigNumber,
   filledHeader,
+  filledHeaderTitle,
   headerButton,
   headerIconButton,
   tileFlush,
-  tileHeading,
 } from "@/components/styles";
 import {
   IconChevronLeft,
@@ -58,7 +58,9 @@ export default async function SparkontenPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Eigene Zeile auf dem Handy, kompakt rechts ab sm – siehe
+              Dashboard. */}
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {canAdd && (
               <form action={addSavingsAccount}>
                 <button type="submit" className={headerButton}>
@@ -84,7 +86,7 @@ export default async function SparkontenPage() {
                   name={a.name}
                   action={renameSavingsAccount}
                   ariaLabel="Name des Sparkontos"
-                  className={tileHeading}
+                  className={filledHeaderTitle}
                   iconClassName="text-faint"
                 />
                 {canDelete && (
