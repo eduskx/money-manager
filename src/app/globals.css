@@ -247,6 +247,36 @@
   --line-soft: #211f1c;
 }
 
+/* --- Rosé: sanftes Beere/Rosa, warme Neutraltöne mit leichtem Rosa-Stich --- */
+:root[data-palette="rose"] {
+  --canvas: #fdf2f5;
+  --surface: #ffffff;
+  --sunken: #fbe8ee;
+  --ink: #2a1720;
+  --muted: #7c5560;
+  --faint: #b28c98;
+  --accent: #c03a63;
+  --on-accent: #ffffff;
+  --saldo: #c03a63;
+  --on-saldo: #ffffff;
+  --line: #f3dbe3;
+  --line-soft: #fbedf1;
+}
+:root[data-palette="rose"].dark {
+  --canvas: #160f13;
+  --surface: #20161b;
+  --sunken: #291d24;
+  --ink: #f4e6ec;
+  --muted: #bd97a4;
+  --faint: #8a6c78;
+  --accent: #ec7ba1;
+  --on-accent: #1b0d13;
+  --saldo: #ec7ba1;
+  --on-saldo: #1b0d13;
+  --line: #33222b;
+  --line-soft: #271a21;
+}
+
 /* `inline` ist hier entscheidend: Tailwind schreibt in die Utilities direkt
    `var(--ink)` statt `var(--color-ink)`. Dadurch lassen sich die Rollen in
    einem Teilbaum umdefinieren (siehe .saldo-scope) und alle Kind-Elemente

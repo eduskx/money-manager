@@ -176,9 +176,9 @@ export function BudgetBoard({
             Flexbox gibt es keine leeren Spuren – die Breite steht an den
             Elementen selbst, und die richtet sich danach, wie viele es gibt.
 
-            `justify-center` erledigt nebenbei die zweite Regel: Volle Reihen
-            füllen die Breite exakt aus (dort bewirkt es nichts), eine
-            angebrochene letzte Reihe steht automatisch mittig.
+            `justify-start`: linksbündig. Volle Reihen füllen die Breite
+            ohnehin aus (dort bewirkt es nichts), eine einzelne oder eine
+            angebrochene letzte Reihe hängt links statt in der Mitte.
 
             Alle Schwellen sind CONTAINER-Abfragen, keine Geräte-Abfragen:
             Entscheidend ist, wie breit die Ausgaben-Kachel wirklich ist –
@@ -188,7 +188,7 @@ export function BudgetBoard({
             Einheitlicher `gap-4`, damit die Rechnungen unten exakt aufgehen –
             vorher war er auf dem Handy 4 px kleiner, was die Breiten um
             Bruchteile verzogen hätte. */}
-        <div className="mt-4 flex flex-wrap justify-center gap-4">
+        <div className="mt-4 flex flex-wrap justify-start gap-4">
           {view.columns.map((c) => {
             const sum = sumOf(c.entries);
             return (

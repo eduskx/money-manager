@@ -83,8 +83,10 @@ User ─┬─ Month ─┬─ Entry ── (columnId) ── ExpenseColumn
   wie `monthKey()`). Der Gast-Seed legt den aktuellen Monat deshalb selbst an.
 - `loadMonthView` (+ `flattenEntries`) liefert die Ansicht;
   `Totals = { income, ausgaben, ruecklagen, restbetrag }`.
-- Monatsgrenze: **max. ein Monat über den echten aktuellen Monat hinaus**
-  (`maxSelectableMonth`, `isMonthAfter`) — serverseitiger Guard + UI.
+- Monatsgrenze: **höchstens der Folgemonat** (`maxSelectableMonth`: aktueller
+  Monat + 1, im Dezember der Januar des Folgejahres; `isMonthAfter`) —
+  serverseitiger Guard + UI (Jahr-vor-Knopf im `MonthSwitcher` ab dem
+  Grenzjahr gesperrt).
 
 **`src/lib/tagesgeld.ts`**
 - `Saldo = Σ Einnahmen − Σ Ausgaben` (**kumulativ über alle Jahre**);
@@ -132,7 +134,7 @@ Die Oberfläche kennt nur **Rollen**, nie Farbwerte: `bg-canvas`, `bg-surface`,
 in `globals.css`**, je Welt und Modus. Neue UI immer über die Rollen bauen —
 kein `bg-gray-50`, kein `emerald`.
 
-- **6 Farbwelten** (Graphit · Indigo · Marine · Salbei · Pflaume · Sand), jede
+- **7 Farbwelten** (Graphit · Indigo · Marine · Salbei · Pflaume · Sand · Rosé), jede
   mit Hell- und Dunkel-Satz. Quelle der Werte ist das Artefakt der Entwürfe;
   Abweichungen davon sind Fehler, keine Freiheit.
 - **`User.palette` ist nullbar**: `null` = „nie gewählt" → es gilt

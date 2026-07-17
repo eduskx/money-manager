@@ -27,6 +27,28 @@ export function isFormulaInput(raw: string): boolean {
 }
 
 /**
+ * Liest eine Betrags-Eingabe als Paar { amount, formula }.
+ *
+ * `amount` versteht Punkt UND Komma als Cent-Trenner („60.50" wie „60,50").
+ * `formula` (nur wenn gerechnet wurde) wird beim Speichern auf Komma
+ * vereinheitlicht – so sieht man beim erneuten Fokussieren überall dieselbe
+ * Schreibweise, egal was getippt wurde. Ausgewertet wird die Formel trotzdem
+ * korrekt, weil evaluateExpression Komma wieder zu Punkt macht.
+ *
+ * Ein Ort für alle vier Betrags-Actions (Budget + Sparkonten), damit die
+ * Regel nicht auseinanderläuft.
+ */
+export function readAmountInput(raw: string): {
+  amount: number | null;
+  formula: string | null;
+} {
+  return {
+    amount: parseAmount(raw),
+    formula: isFormulaInput(raw) ? raw.trim().replace(/\./g, ",") : null,
+  };
+}
+
+/**
  * Wandelt eine Freitext-Eingabe in eine Zahl. Erkennt automatisch Formeln.
  * Gibt `null` zurück, wenn nichts Sinnvolles ausgewertet werden kann.
  */

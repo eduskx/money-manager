@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { auth, signIn, signOut } from "@/auth";
-import { isFormulaInput, parseAmount } from "@/lib/calc";
+import { readAmountInput } from "@/lib/calc";
 import {
   applyTemplateToMonths,
   importMonthFromTemplate,
@@ -230,8 +230,7 @@ export async function addEntry(formData: FormData) {
   const columnId = String(formData.get("columnId") ?? "") || null;
   const label = String(formData.get("label") ?? "").trim();
   const rawAmount = String(formData.get("amount") ?? "");
-  const amount = parseAmount(rawAmount);
-  const formula = isFormulaInput(rawAmount) ? rawAmount.trim() : null;
+  const { amount, formula } = readAmountInput(rawAmount);
 
   // Ohne Bezeichnung legen wir keine Zeile an; der Betrag darf 0/leer sein.
   if (!monthId || !isSection(sectionRaw) || !label) return;
@@ -380,8 +379,7 @@ export async function updateEntry(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const rawAmount = String(formData.get("amount") ?? "");
-  const amount = parseAmount(rawAmount);
-  const formula = isFormulaInput(rawAmount) ? rawAmount.trim() : null;
+  const { amount, formula } = readAmountInput(rawAmount);
   if (!id) return;
 
   // Eintrag (user-scoped) samt zugehörigem Monat holen.
@@ -540,8 +538,7 @@ export async function addTagesgeldEntry(formData: FormData) {
   const blockId = String(formData.get("blockId") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const rawAmount = String(formData.get("amount") ?? "");
-  const amount = parseAmount(rawAmount);
-  const formula = isFormulaInput(rawAmount) ? rawAmount.trim() : null;
+  const { amount, formula } = readAmountInput(rawAmount);
   const yearRaw = Number(formData.get("year"));
   if (!blockId || !label) return;
 
@@ -582,8 +579,7 @@ export async function updateTagesgeldEntry(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const rawAmount = String(formData.get("amount") ?? "");
-  const amount = parseAmount(rawAmount);
-  const formula = isFormulaInput(rawAmount) ? rawAmount.trim() : null;
+  const { amount, formula } = readAmountInput(rawAmount);
   if (!id) return;
 
   const entry = await prisma.tagesgeldEntry.findFirst({
