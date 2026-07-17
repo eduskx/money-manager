@@ -39,20 +39,28 @@ const arrowClass =
 
 // Monatsnavigation: Pfeile für vor/zurück und ein Klick auf die Mitte öffnet
 // ein Popover zur direkten Auswahl von Monat und Jahr. Der Wechsel läuft über
-// die URL (?y=&m=); die Server-Komponente legt den Monat bei Bedarf an.
+// die URL (?y=&m=). Angesteuerte Monate werden NICHT mehr automatisch
+// angelegt – ein leerer Monat zeigt „Vorlage importieren".
 //
 // maxYear/maxMonth: am weitesten wählbarer Monat (ein Monat nach dem echten
 // aktuellen Monat). Alles danach ist gesperrt.
+//
+// generatedKeys: die Monate, die es schon gibt (Vorlage importiert). Sie
+// werden im Raster farblich markiert. Format „2026-7" – MUSS zu monthKey()
+// aus lib/month.ts passen; direkt importieren geht nicht, weil month.ts
+// Prisma lädt und damit nicht in den Browser darf.
 export function MonthSwitcher({
   year,
   month,
   maxYear,
   maxMonth,
+  generatedKeys = [],
 }: {
   year: number;
   month: number;
   maxYear: number;
   maxMonth: number;
+  generatedKeys?: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -163,12 +171,15 @@ export function MonthSwitcher({
             </button>
           </div>
 
-          {/* Monatsraster */}
+          {/* Monatsraster. Rangfolge der Zustände: ausgewählt schlägt alles,
+              dann gesperrt, dann „schon erzeugt" (getönte Akzentfläche),
+              zuletzt der neutrale Rest. */}
           <div className="grid grid-cols-3 gap-1">
             {MONTH_SHORT.map((name, i) => {
               const m = i + 1;
               const isSelected = pickerYear === year && m === month;
               const isDisabled = isBeyondMax(pickerYear, m);
+              const isGenerated = generatedKeys.includes(`${pickerYear}-${m}`);
               return (
                 <button
                   key={m}
@@ -176,12 +187,15 @@ export function MonthSwitcher({
                   onClick={() => go(pickerYear, m)}
                   disabled={isDisabled}
                   aria-current={isSelected ? "true" : undefined}
+                  title={isGenerated && !isSelected ? "Bereits erstellt" : undefined}
                   className={
                     isSelected
                       ? "rounded-lg bg-accent px-2 py-2 text-sm font-medium text-on-accent"
                       : isDisabled
                         ? "cursor-not-allowed rounded-lg px-2 py-2 text-sm text-faint opacity-50"
-                        : "rounded-lg px-2 py-2 text-sm text-ink transition hover:bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        : isGenerated
+                          ? "rounded-lg bg-accent/15 px-2 py-2 text-sm font-medium text-accent transition hover:bg-accent/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                          : "rounded-lg px-2 py-2 text-sm text-ink transition hover:bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   }
                 >
                   {name}

@@ -12,8 +12,10 @@ import { auth, signIn, signOut } from "@/auth";
 import { isFormulaInput, parseAmount } from "@/lib/calc";
 import {
   applyTemplateToMonths,
+  importMonthFromTemplate,
+  isMonthAfter,
   MAX_EXPENSE_COLUMNS,
-  previousMonth,
+  maxSelectableMonth,
 } from "@/lib/month";
 import { MAX_SAVINGS_ACCOUNTS } from "@/lib/tagesgeld";
 import { isPalette } from "@/lib/palette";
@@ -419,12 +421,40 @@ export async function deleteEntry(formData: FormData) {
 }
 
 // ---------------------------------------------------------------------------
-// Löschen / Zurücksetzen
+// Monat erzeugen / Löschen / Zurücksetzen
 // ---------------------------------------------------------------------------
 
-// Alle Monate löschen (Vorlage bleibt) und danach auf den echten aktuellen
-// Monat springen. Dieser wird beim Rendern automatisch neu aus der Vorlage
-// angelegt.
+// „Vorlage importieren": erzeugt den angezeigten Monat aus der Vorlage. Das
+// ist seit dem Umbau der EINZIGE Weg, auf dem ein Monat entsteht – bloßes
+// Durchblättern legt nichts mehr an.
+export async function importTemplate(formData: FormData) {
+  const userId = await requireUserId();
+
+  const year = Number(formData.get("year"));
+  const month = Number(formData.get("month"));
+  if (
+    !Number.isInteger(year) ||
+    year < 2000 ||
+    year > 2100 ||
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12
+  ) {
+    return;
+  }
+
+  // Dieselbe Grenze wie beim Blättern, hier serverseitig: Der Knopf ist zwar
+  // nur auf erreichbaren Monaten zu sehen, aber eine Action ist ein Endpunkt –
+  // wer die Anfrage von Hand schickt, umgeht jede Oberfläche.
+  if (isMonthAfter(year, month, maxSelectableMonth())) return;
+
+  await importMonthFromTemplate(userId, year, month);
+  revalidateBudget();
+}
+
+// Alle Monate löschen (Vorlage bleibt) und zum echten aktuellen Monat gehen.
+// Dort steht danach „Vorlage importieren" – automatisch neu erzeugt wird
+// nichts mehr.
 export async function deleteAllMonths() {
   const userId = await requireUserId();
 
@@ -435,9 +465,9 @@ export async function deleteAllMonths() {
   redirect(`/dashboard?y=${now.getFullYear()}&m=${now.getMonth() + 1}`);
 }
 
-// Den in der App gerade angezeigten Monat löschen und zum Vormonat springen.
-// Der gelöschte Monat wird NICHT automatisch neu erzeugt – er entsteht erst
-// wieder, wenn man ihn selbst ansteuert.
+// Den gerade angezeigten Monat löschen. Man BLEIBT auf dem Monat – der zeigt
+// danach wieder „Vorlage importieren". Deshalb bewusst kein Redirect: Ohne
+// ihn rendert die Seite unter derselben URL neu, und genau das ist gewollt.
 export async function deleteCurrentMonth(formData: FormData) {
   const userId = await requireUserId();
 
@@ -456,9 +486,7 @@ export async function deleteCurrentMonth(formData: FormData) {
     where: { userId, isTemplate: false, year, month },
   });
 
-  const prev = previousMonth(year, month);
   revalidatePath("/dashboard");
-  redirect(`/dashboard?y=${prev.year}&m=${prev.month}`);
 }
 
 // Die Vorlage leeren. Da unberührte Monate die Vorlage spiegeln, werden diese
