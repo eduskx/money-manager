@@ -48,6 +48,15 @@ model User {
   // E-Mail und Passwort sind Zufallswerte und für den Gast nicht nutzbar –
   // deshalb sperren die Profil-Actions diese Felder für ihn.
   isGuest      Boolean  @default(false)
+  // Soll der Restbetrag eines Monats als „Vormonat" in den nächsten fließen?
+  // Aus = jeder Monat steht für sich, die Vormonat-Zeile verschwindet.
+  //
+  // Liegt am User und nicht an der Vorlage, obwohl der Schalter dort sitzt:
+  // Es ist eine Regel fürs Rechnen, kein Inhalt der Vorlage – „Vorlage leeren"
+  // darf sie nicht mitreißen. Nicht nullbar wie `palette`, weil es hier kein
+  // „nie gewählt" braucht: An ist die sinnvolle Voreinstellung, und wer sie
+  // ausschaltet, meint genau das.
+  carryOver    Boolean  @default(true)
   // Farbwelt der Oberfläche. null = der Nutzer hat noch nie eine gewählt –
   // dann gilt DEFAULT_PALETTE aus src/lib/palette.ts. Bewusst nullbar statt
   // mit DB-Default: Nur so bleibt „nie gewählt" von „genau diese Farbe

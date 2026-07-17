@@ -37,6 +37,21 @@ export const filledHeader =
 export const tileHeading =
   "text-[11px] font-bold uppercase tracking-[0.16em] text-muted";
 
+// Überschrift auf einem gefüllten Kopf (Sparkonto-Name). Größer und kräftiger
+// als tileHeading und in voller Schriftstärke statt `muted` – auf der Füllung
+// ist der Name die Hauptsache, nicht eine Beschriftung am Rand.
+export const filledHeaderTitle =
+  "text-base font-bold uppercase tracking-[0.08em] text-ink";
+
+// Überschrift eines Blocks in einem Sparkonto (Einnahmen, Ausgaben, Rücklagen,
+// eigene Blöcke). Wie tileHeading, aber in `ink` statt `muted` und eine Spur
+// größer: Auf der Kontoseite stehen mehrere gleich aussehende Karten
+// nebeneinander – dort ist der Titel das Unterscheidungsmerkmal und darf nicht
+// zurücktreten. (Bei den Dashboard-Kacheln ist es umgekehrt: Dort trägt die
+// große Zahl, und die Überschrift bleibt bewusst leise.)
+export const blockHeading =
+  "text-[13px] font-bold uppercase tracking-[0.12em] text-ink";
+
 // Die große Zahl. Einnahmen und Saldo teilen sie sich bewusst.
 export const bigNumber =
   "text-[clamp(1.625rem,3.6vw,2.125rem)] font-bold leading-tight tracking-tight tabular-nums";

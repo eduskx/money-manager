@@ -145,6 +145,27 @@ function isSection(value: string): value is Section {
 }
 
 // ---------------------------------------------------------------------------
+// Vormonats-Übertrag an/aus
+// ---------------------------------------------------------------------------
+
+// Schaltet um, ob der Restbetrag eines Monats in den nächsten fließt.
+//
+// Es wird nichts umgerechnet und nichts gelöscht: Der Übertrag ist eine
+// Rechnung, kein gespeicherter Wert. Ausschalten heißt nur, dass die Kette
+// künftig nicht mehr durchgereicht wird – wieder einschalten stellt alles
+// unverändert her.
+export async function setCarryOver(enabled: boolean) {
+  const userId = await requireUserId();
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { carryOver: Boolean(enabled) },
+  });
+
+  revalidateBudget();
+}
+
+// ---------------------------------------------------------------------------
 // Farbwelt
 // ---------------------------------------------------------------------------
 

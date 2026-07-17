@@ -7,7 +7,7 @@ import { TagesgeldAddEntry } from "@/components/TagesgeldAddEntry";
 import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { IconTrash } from "@/components/icons";
-import { sumRow, tile, tileHeading } from "@/components/styles";
+import { blockHeading, sumRow, tile } from "@/components/styles";
 
 // Ein Block auf einer Sparkonto-Seite: Titel, Einträge, „Neuer Eintrag" und
 // eine Summenzeile am Fuß. Optional mit Element rechts im Kopf (Jahres-
@@ -45,11 +45,11 @@ export function TagesgeldBlockCard({
             name={title}
             action={renameTagesgeldBlock}
             ariaLabel="Name des Blocks"
-            className={tileHeading}
+            className={blockHeading}
             iconClassName="text-faint"
           />
         ) : (
-          <h2 title={title} className={`min-w-0 flex-1 truncate ${tileHeading}`}>
+          <h2 title={title} className={`min-w-0 flex-1 truncate ${blockHeading}`}>
             {title}
           </h2>
         )}
