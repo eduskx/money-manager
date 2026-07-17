@@ -35,7 +35,7 @@ const MONTH_SHORT = [
 ];
 
 const arrowClass =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted";
 
 // Monatsnavigation: Pfeile für vor/zurück und ein Klick auf die Mitte öffnet
 // ein Popover zur direkten Auswahl von Monat und Jahr. Der Wechsel läuft über
@@ -164,7 +164,13 @@ export function MonthSwitcher({
             <button
               type="button"
               onClick={() => setPickerYear((y) => y + 1)}
+              disabled={pickerYear >= maxYear}
               aria-label="Jahr vor"
+              title={
+                pickerYear >= maxYear
+                  ? "Weiter in der Zukunft nicht möglich"
+                  : undefined
+              }
               className={arrowClass}
             >
               <IconChevronRight />

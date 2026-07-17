@@ -171,10 +171,13 @@ export function previousMonth(year: number, month: number) {
 
 // Am weitesten in der Zukunft auswählbarer Monat: genau EIN Monat nach dem
 // echten aktuellen Monat (real, nicht der in der App angezeigte).
+// Am weitesten wählbarer Monat = der FOLGEMONAT (aktueller Monat + 1). Im Juli
+// also bis August; im Dezember der Januar des nächsten Jahres (dort springt
+// die Grenze bewusst über den Jahreswechsel).
 export function maxSelectableMonth(): { year: number; month: number } {
   const now = new Date();
   const y = now.getFullYear();
-  const m = now.getMonth() + 1;
+  const m = now.getMonth() + 1; // 1..12
   return m === 12 ? { year: y + 1, month: 1 } : { year: y, month: m + 1 };
 }
 

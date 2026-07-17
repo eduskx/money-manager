@@ -45,9 +45,7 @@ export default function LoginPage() {
             €
           </span>
           <div>
-            <h1 className="text-2xl font-semibold text-ink">
-              Willkommen zurück
-            </h1>
+            <h1 className="text-2xl font-semibold text-ink">Monatsblick</h1>
             <p className="text-sm text-muted">
               Melde dich an, um deine Finanzen zu sehen.
             </p>

@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/user";
 import { InlineScript } from "@/components/InlineScript";
 
 export const metadata: Metadata = {
-  title: "Money Manager",
+  title: "Monatsblick",
   description: "Behalte deine Finanzen im Blick.",
 };
 

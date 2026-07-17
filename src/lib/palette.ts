@@ -16,6 +16,7 @@ export const PALETTE_ORDER = [
   "SALBEI",
   "PFLAUME",
   "SAND",
+  "ROSE",
 ] as const satisfies readonly Palette[];
 
 // Standard für neue Nutzer, für Gäste und für alle, die nie umgeschaltet
@@ -34,6 +35,7 @@ export const PALETTE_LABELS: Record<Palette, string> = {
   SALBEI: "Salbei",
   PFLAUME: "Pflaume",
   SAND: "Sand",
+  ROSE: "Rosé",
 };
 
 // Der Wert, der als data-palette auf <html> landet: "INDIGO" -> "indigo".

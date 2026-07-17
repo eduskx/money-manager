@@ -34,6 +34,7 @@ enum Palette {
   SALBEI
   PFLAUME
   SAND
+  ROSE
 }
 
 // Ein Benutzerkonto. Das Passwort wird niemals im Klartext gespeichert,
