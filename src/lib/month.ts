@@ -412,29 +412,49 @@ export { monthKey };
  */
 export async function applyTemplateToMonths(userId: string) {
   const template = await getOrCreateTemplate(userId);
-  const [templateColumns, templateEntries] = await loadTemplateContent(
-    template.id,
+
+  // Die Vorlage laden und die betroffenen Monate suchen – beides weiß nichts
+  // voneinander, also nebeneinander.
+  const [[templateColumns, templateEntries], months] = await Promise.all([
+    loadTemplateContent(template.id),
+    prisma.month.findMany({
+      where: { userId, isTemplate: false, customized: false },
+      select: { id: true },
+    }),
+  ]);
+
+  if (months.length === 0) return;
+
+  // Alle Monate auf einmal statt einer nach dem anderen.
+  //
+  // Vorher lief hier eine Schleife mit einer eigenen Transaktion PRO Monat –
+  // vier Rundreisen zur DB je Monat, nacheinander. Bei 3 Monaten ging das noch,
+  // bei 12 wurde daraus eine spürbare Pause auf der Vorlagen-Seite. Jetzt sind
+  // es vier Rundreisen INSGESAMT, egal wie viele Monate es sind.
+  //
+  // Möglich ist das, weil `buildCopy` die Spalten-IDs selbst erzeugt: Wir
+  // kennen sie also schon, bevor irgendetwas geschrieben ist, und können die
+  // Einträge aller Monate direkt darauf zeigen lassen.
+  const monthIds = months.map((m) => m.id);
+  const copies = months.map((m) =>
+    buildCopy(m.id, templateColumns, templateEntries),
   );
+  const allColumns = copies.flatMap((c) => c.columns);
+  const allEntries = copies.flatMap((c) => c.entries);
 
-  const months = await prisma.month.findMany({
-    where: { userId, isTemplate: false, customized: false },
-    select: { id: true },
+  // Eine Transaktion für alles: Entweder spiegeln am Ende ALLE unberührten
+  // Monate die Vorlage, oder es ändert sich gar nichts. Ein halb angewendeter
+  // Sync wäre schlimmer als keiner.
+  await prisma.$transaction(async (tx) => {
+    // Einträge zuerst: Sie hängen per Fremdschlüssel an den Spalten.
+    await tx.entry.deleteMany({ where: { monthId: { in: monthIds } } });
+    await tx.expenseColumn.deleteMany({ where: { monthId: { in: monthIds } } });
+
+    if (allColumns.length > 0) {
+      await tx.expenseColumn.createMany({ data: allColumns });
+    }
+    if (allEntries.length > 0) {
+      await tx.entry.createMany({ data: allEntries });
+    }
   });
-
-  for (const m of months) {
-    const copy = buildCopy(m.id, templateColumns, templateEntries);
-
-    // Alte Spalten + Einträge weg, aktuelle Vorlage rein – atomar pro Monat.
-    await prisma.$transaction(async (tx) => {
-      await tx.expenseColumn.deleteMany({ where: { monthId: m.id } });
-      await tx.entry.deleteMany({ where: { monthId: m.id } });
-
-      if (copy.columns.length > 0) {
-        await tx.expenseColumn.createMany({ data: copy.columns });
-      }
-      if (copy.entries.length > 0) {
-        await tx.entry.createMany({ data: copy.entries });
-      }
-    });
-  }
 }
