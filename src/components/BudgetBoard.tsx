@@ -17,19 +17,25 @@ function sumOf(entries: { amount: number }[]): number {
 //   Handy  Saldo zuerst, dann Einnahmen, dann Ausgaben
 // Umgesetzt über `order`: Das Raster ist mobil einspaltig, ab lg zweispaltig.
 //
-// `carry`: der berechnete Übertrag aus dem Vormonat. `null` bei der Vorlage
-// (dort gibt es keinen Vormonat) – dann wird die Zeile nicht angezeigt. Die in
-// `totals` übergebenen income/restbetrag enthalten den Übertrag bereits.
+// `carry`: der berechnete Übertrag. `null` bei der Vorlage (dort gibt es
+// keinen Vormonat) – dann wird die Zeile nicht angezeigt. Die in `totals`
+// übergebenen income/restbetrag enthalten den Übertrag bereits.
+//
+// `carryLabel`: Beschriftung der Übertrags-Zeile. Standard „Vormonat";
+// die Seite gibt etwas anderes mit, wenn der Übertrag über eine Lücke aus
+// einem weiter zurückliegenden Monat kommt (z. B. „Übertrag aus April 2026").
 export function BudgetBoard({
   monthId,
   view,
   totals,
   carry = null,
+  carryLabel = "Vormonat",
 }: {
   monthId: string;
   view: MonthView;
   totals: Totals;
   carry?: number | null;
+  carryLabel?: string;
 }) {
   // Anteil an den Einnahmen – die eine Rechnung hinter allen Balken, egal ob
   // Ausgaben-Spalte oder Abzüge. Ohne Einnahmen gibt es keinen sinnvollen
@@ -78,13 +84,16 @@ export function BudgetBoard({
         {/* Trennstrich unter dem Gesamtstand – dasselbe Signal wie im
             Saldo-Block: „ab hier steht, woraus sich die Zahl ergibt". */}
         <div className="mt-4 border-t border-line pt-1">
-          {/* Berechneter Übertrag aus dem Vormonat – nicht editierbar. Das
-              Abstands-Element rechts hält die Beträge in einer Flucht mit den
-              Zeilen darunter, die dort ihren Löschen-Knopf haben. */}
+          {/* Berechneter Übertrag – nicht editierbar. Das Abstands-Element
+              rechts hält die Beträge in einer Flucht mit den Zeilen darunter,
+              die dort ihren Löschen-Knopf haben. */}
           {carry !== null && (
             <div className="flex min-w-0 items-center gap-1">
-              <span className="min-w-0 flex-1 truncate px-2 py-2 text-sm text-faint">
-                Vormonat
+              <span
+                title={carryLabel}
+                className="min-w-0 flex-1 truncate px-2 py-2 text-sm text-faint"
+              >
+                {carryLabel}
               </span>
               <span className="w-20 shrink-0 px-2 py-2 text-right text-sm text-faint tabular-nums">
                 {formatEuro(carry)}

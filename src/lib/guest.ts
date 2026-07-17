@@ -155,33 +155,50 @@ function demoMonths(): SeedMonth[] {
   const now = new Date();
   const prev = previousMonth(now.getFullYear(), now.getMonth() + 1);
 
+  // Vorlage und aktueller Monat teilen sich denselben Inhalt – Pflicht, kein
+  // Zufall: Ein Monat mit customized = false MUSS die Vorlage spiegeln, sonst
+  // würde ihn der nächste Vorlagen-Sync überschreiben und die Demo-Zahlen
+  // sprängen unter den Augen des Betrachters um.
+  const templateContent = {
+    income: [{ label: "Gehalt", amount: 2450 }],
+    columns: [
+      { name: "Fixkosten", entries: FIXKOSTEN },
+      {
+        name: "Einkäufe / Essen / Leben",
+        entries: [
+          { label: "Woche 1", amount: 95 },
+          { label: "Woche 2", amount: 95 },
+          { label: "Woche 3", amount: 95 },
+          { label: "Woche 4", amount: 95 },
+        ],
+      },
+      { name: "Luxus", entries: [] },
+    ],
+    ruecklagen: [
+      { label: "Tagesgeld", amount: 250 },
+      { label: "ETF-Sparplan", amount: 150 },
+    ],
+  };
+
   return [
-    // Die Vorlage. Der aktuelle Monat wird daraus beim ersten Öffnen des
-    // Dashboards automatisch erzeugt (getOrCreateMonth) – den müssen wir
-    // deshalb gar nicht selbst anlegen.
+    // Die Vorlage.
     {
       year: null,
       month: null,
       isTemplate: true,
       customized: false,
-      income: [{ label: "Gehalt", amount: 2450 }],
-      columns: [
-        { name: "Fixkosten", entries: FIXKOSTEN },
-        {
-          name: "Einkäufe / Essen / Leben",
-          entries: [
-            { label: "Woche 1", amount: 95 },
-            { label: "Woche 2", amount: 95 },
-            { label: "Woche 3", amount: 95 },
-            { label: "Woche 4", amount: 95 },
-          ],
-        },
-        { name: "Luxus", entries: [] },
-      ],
-      ruecklagen: [
-        { label: "Tagesgeld", amount: 250 },
-        { label: "ETF-Sparplan", amount: 150 },
-      ],
+      ...templateContent,
+    },
+
+    // Der aktuelle Monat – MUSS mitgeseedet werden, seit Monate nicht mehr
+    // automatisch entstehen: Ohne ihn sähe ein Gast nach dem Login nur die
+    // leere „Vorlage importieren"-Kachel, und ein leerer Gast zeigt nichts.
+    {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      isTemplate: false,
+      customized: false,
+      ...templateContent,
     },
 
     // Der Vormonat – „schon bearbeitet" (customized), damit ihn der

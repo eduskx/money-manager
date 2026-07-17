@@ -250,13 +250,27 @@ function buildCopy(
 }
 
 /**
- * Liefert den Monat (year/month) für einen User. Existiert er noch nicht, wird
- * er beim ersten Öffnen aus der Vorlage materialisiert – inklusive der
- * Ausgaben-Spalten. Der „Vormonat"-Übertrag wird NICHT gespeichert, sondern
- * dynamisch berechnet (siehe computeChain) – so bleibt er immer aktuell.
+ * Liefert den Monat (year/month) für einen User – oder null, wenn er noch
+ * nicht erzeugt wurde. Bewusst OHNE automatisches Anlegen: Ein Monat entsteht
+ * erst, wenn der Nutzer im Dashboard auf „Vorlage importieren" klickt. Bloßes
+ * Durchblättern legt nichts mehr an.
+ */
+export async function getMonth(userId: string, year: number, month: number) {
+  return prisma.month.findUnique({
+    where: { userId_year_month: { userId, year, month } },
+  });
+}
+
+/**
+ * „Vorlage importieren": Erzeugt den Monat (year/month) aus der Vorlage –
+ * inklusive der Ausgaben-Spalten. Existiert er schon (z. B. Doppelklick auf
+ * den Import-Knopf), wird er unverändert zurückgegeben.
+ *
+ * Der „Vormonat"-Übertrag wird NICHT gespeichert, sondern dynamisch berechnet
+ * (siehe computeChain) – so bleibt er immer aktuell.
  * Idempotent: bei parallelem Anlegen (P2002) wird der Monat erneut gelesen.
  */
-export async function getOrCreateMonth(
+export async function importMonthFromTemplate(
   userId: string,
   year: number,
   month: number,
@@ -302,11 +316,15 @@ export async function getOrCreateMonth(
 // ---------------------------------------------------------------------------
 
 // Das berechnete Ergebnis für einen Monat – inklusive des Übertrags aus dem
-// (konsekutiven) Vormonat. Ändert sich ein früherer Monat, ändern sich alle
-// folgenden automatisch mit, weil hier immer frisch gerechnet wird.
+// letzten vorhandenen Monat davor. Ändert sich ein früherer Monat, ändern sich
+// alle folgenden automatisch mit, weil hier immer frisch gerechnet wird.
 export type MonthComputation = Totals & {
-  carry: number; // Saldo aus Vormonat (fließt in income ein)
-  hasPrev: boolean; // gibt es einen direkten Vormonat?
+  carry: number; // Übertrag (fließt in income ein)
+  hasPrev: boolean; // gibt es irgendeinen früheren Monat, aus dem er kommt?
+  // Aus welchem Monat der Übertrag stammt. Wichtig für die Anzeige: Ist es
+  // NICHT der direkte Kalender-Vormonat (Lücke!), soll die Zeile das sagen –
+  // sonst steht da „Vormonat" mit einer Zahl aus einem ganz anderen Monat.
+  carryFrom: { year: number; month: number } | null;
 };
 
 function monthKey(year: number, month: number): string {
@@ -315,9 +333,10 @@ function monthKey(year: number, month: number): string {
 
 /**
  * Rechnet die Restbeträge einer Monatsreihe der Reihe nach durch und trägt den
- * Restbetrag jeweils als „Saldo aus Vormonat" in den direkt folgenden Monat.
- * Der Übertrag greift nur zwischen KALENDARISCH aufeinanderfolgenden Monaten;
- * bei Lücken beginnt die Kette neu (carry = 0).
+ * Restbetrag jeweils in den nächsten VORHANDENEN Monat. Lücken werden
+ * übersprungen: Ist der Februar gelöscht, fließt der Januar-Rest in den März.
+ * Nichts geht verloren, nur weil ein Monat dazwischen fehlt – seit Monate nur
+ * noch per „Vorlage importieren" entstehen, sind Lücken der Normalfall.
  *
  * `carryOver = false`: Der Nutzer hat den Übertrag abgeschaltet – dann steht
  * jeder Monat für sich. Der Schalter greift bewusst HIER und nicht erst in der
@@ -341,14 +360,9 @@ export function computeChain(
 
   for (const m of sorted) {
     const base = computeTotals(m.entries);
-    const p = previousMonth(m.year, m.month);
     const previous = prev; // pro Durchlauf festhalten (bricht Typ-Zirkularität)
-    const hasPrev: boolean =
-      carryOver &&
-      previous !== null &&
-      p.year === previous.year &&
-      p.month === previous.month;
-    const carry: number = previous !== null && hasPrev ? previous.restbetrag : 0;
+    const hasPrev: boolean = carryOver && previous !== null;
+    const carry: number = hasPrev && previous !== null ? previous.restbetrag : 0;
 
     const income = base.income + carry;
     const restbetrag = income - base.ausgaben - base.ruecklagen;
@@ -359,6 +373,10 @@ export function computeChain(
       restbetrag,
       carry,
       hasPrev,
+      carryFrom:
+        hasPrev && previous !== null
+          ? { year: previous.year, month: previous.month }
+          : null,
     });
 
     prev = { year: m.year, month: m.month, restbetrag };

@@ -63,15 +63,24 @@ User ─┬─ Month ─┬─ Entry ── (columnId) ── ExpenseColumn
 
 **`src/lib/month.ts`**
 - **„Vormonat" wird NICHT gespeichert, sondern berechnet.** `computeChain` /
-  `loadMonthChain` rechnen die Restbeträge konsekutiver Monate durch; ändert
-  sich ein früherer Monat, ziehen alle folgenden automatisch nach. In der UI
-  eine nicht-editierbare Zeile im Einnahmen-Block.
+  `loadMonthChain` reichen den Restbetrag in den jeweils nächsten
+  **vorhandenen** Monat weiter — **Lücken werden übersprungen** (Februar
+  gelöscht → Januar-Rest fließt in den März). Ändert sich ein früherer Monat,
+  ziehen alle folgenden automatisch nach. In der UI eine nicht-editierbare
+  Zeile im Einnahmen-Block; kommt der Übertrag über eine Lücke, heißt sie
+  nicht „Vormonat", sondern „Übertrag aus ‹Monat Jahr›" (`carryFrom`).
 - **Vorlagen-Sync (`applyTemplateToMonths`)**: Regel = **jeder Monat mit
   `customized === false` spiegelt immer die aktuelle Vorlage** (Spalten UND
   Einträge, vergangen wie zukünftig, füllt auch leere Monate). Ausgelöst
   automatisch bei jeder Vorlage-Änderung (`afterEntryChange` in `actions.ts`).
-- `getOrCreateMonth` materialisiert einen Monat beim ersten Öffnen aus der
-  Vorlage (`buildCopy`, Spalten-Zuordnung über `position`).
+- **Monate entstehen NICHT mehr automatisch.** Ein nie erzeugter Monat zeigt
+  eine gestrichelte Kachel mit „Vorlage importieren" (`ImportTemplateTile`);
+  erst der Klick ruft `importMonthFromTemplate` (`buildCopy`,
+  Spalten-Zuordnung über `position`). Bloßes Durchblättern legt nichts an.
+  `getMonth` liefert deshalb `Month | null`. Monat löschen = Zeile weg, man
+  **bleibt** auf dem Monat (kein Redirect). „Generiert" = Zeile existiert —
+  der `MonthSwitcher` markiert diese Monate farbig (`generatedKeys`, Format
+  wie `monthKey()`). Der Gast-Seed legt den aktuellen Monat deshalb selbst an.
 - `loadMonthView` (+ `flattenEntries`) liefert die Ansicht;
   `Totals = { income, ausgaben, ruecklagen, restbetrag }`.
 - Monatsgrenze: **max. ein Monat über den echten aktuellen Monat hinaus**
