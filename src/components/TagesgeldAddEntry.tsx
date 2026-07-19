@@ -17,11 +17,8 @@ export function TagesgeldAddEntry({
 
   async function action(formData: FormData) {
     await addTagesgeldEntry(formData);
-    const form = formRef.current;
-    if (!form) return;
-    form.reset();
-    // Cursor zurück ins Namensfeld, damit man direkt die nächste Zeile tippt.
-    (form.elements.namedItem("label") as HTMLInputElement | null)?.focus();
+    // Formular leeren, aber den Fokus nicht ins nächste Feld setzen.
+    formRef.current?.reset();
   }
 
   return (

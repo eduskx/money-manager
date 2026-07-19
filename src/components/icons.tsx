@@ -31,6 +31,14 @@ export function IconTrash({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+export function IconCheck({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 export function IconChevronLeft({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg {...base} className={className}>
