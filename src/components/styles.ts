@@ -56,10 +56,6 @@ export const blockHeading =
 export const bigNumber =
   "text-[clamp(1.625rem,3.6vw,2.125rem)] font-bold leading-tight tracking-tight tabular-nums";
 
-// Summenzeile am Fuß eines Blocks – sitzt dank mt-auto immer unten.
-export const sumRow =
-  "mt-auto flex items-baseline justify-between gap-2 border-t-2 border-accent/50 pt-2.5";
-
 // Knopf/Link in einer Kopfzeile (44px Touch-Ziel).
 export const headerButton =
   "inline-flex h-11 items-center gap-1 rounded-lg border border-line px-3 text-sm font-medium text-ink transition hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";

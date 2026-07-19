@@ -1,6 +1,7 @@
 import { MAX_EXPENSE_COLUMNS, type MonthView, type Totals } from "@/lib/month";
 import { formatEuro } from "@/lib/format";
 import { BudgetColumn } from "@/components/BudgetColumn";
+import { CollapsibleBlock } from "@/components/CollapsibleBlock";
 import { AddExpenseColumn } from "@/components/AddExpenseColumn";
 import { bigNumber, tile, tileAccent, tileHeading } from "@/components/styles";
 
@@ -78,78 +79,95 @@ export function BudgetBoard({
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       {/* --- Einnahmen: PC oben links, Handy unter dem Saldo --- */}
       <section className={`${tile} order-2 lg:order-1`}>
-        <h2 className={tileHeading}>Einnahmen</h2>
-        <p className={`mt-3 ${bigNumber}`}>{formatEuro(totals.income)}</p>
+        <CollapsibleBlock
+          heading={<h2 className={tileHeading}>Einnahmen</h2>}
+          summary={<p className={`mt-1 ${bigNumber}`}>{formatEuro(totals.income)}</p>}
+        >
+          {/* Trennstrich unter dem Gesamtstand – dasselbe Signal wie im
+              Saldo-Block: „ab hier steht, woraus sich die Zahl ergibt". */}
+          <div className="mt-4 border-t border-line pt-1">
+            {/* Berechneter Übertrag – nicht editierbar. Das Abstands-Element
+                rechts hält die Beträge in einer Flucht mit den Zeilen darunter,
+                die dort ihren Löschen-Knopf haben. */}
+            {carry !== null && (
+              <div className="flex min-w-0 items-center gap-1">
+                <span
+                  title={carryLabel}
+                  className="min-w-0 flex-1 truncate px-2 py-2 text-sm text-faint"
+                >
+                  {carryLabel}
+                </span>
+                <span className="w-20 shrink-0 px-2 py-2 text-right text-sm text-faint tabular-nums">
+                  {formatEuro(carry)}
+                </span>
+                <span className="h-9 w-9 shrink-0" aria-hidden />
+              </div>
+            )}
 
-        {/* Trennstrich unter dem Gesamtstand – dasselbe Signal wie im
-            Saldo-Block: „ab hier steht, woraus sich die Zahl ergibt". */}
-        <div className="mt-4 border-t border-line pt-1">
-          {/* Berechneter Übertrag – nicht editierbar. Das Abstands-Element
-              rechts hält die Beträge in einer Flucht mit den Zeilen darunter,
-              die dort ihren Löschen-Knopf haben. */}
-          {carry !== null && (
-            <div className="flex min-w-0 items-center gap-1">
-              <span
-                title={carryLabel}
-                className="min-w-0 flex-1 truncate px-2 py-2 text-sm text-faint"
-              >
-                {carryLabel}
-              </span>
-              <span className="w-20 shrink-0 px-2 py-2 text-right text-sm text-faint tabular-nums">
-                {formatEuro(carry)}
-              </span>
-              <span className="h-9 w-9 shrink-0" aria-hidden />
-            </div>
-          )}
-
-          <BudgetColumn section="INCOME" entries={view.income} monthId={monthId} />
-        </div>
+            <BudgetColumn
+              section="INCOME"
+              entries={view.income}
+              monthId={monthId}
+            />
+          </div>
+        </CollapsibleBlock>
       </section>
 
-      {/* --- Saldo: die eine gefüllte Kachel --- */}
+      {/* --- Saldo: die eine gefüllte Kachel ---
+          Der Pfeil sitzt (wie bei den Einnahmen) links neben „Saldo" und
+          klappt ALLES weg außer der großen Zahl und dem Infotext darunter –
+          die beiden bilden die `summary`. Nur EIN Pfeil: die Abzüge klappen
+          mit ein, sie haben keinen eigenen mehr. */}
       <section className={`${tileAccent} order-1 lg:order-2`}>
-        <h2 className={tileHeading}>Saldo</h2>
-        <p className={`mt-3 ${bigNumber}`}>{formatEuro(totals.restbetrag)}</p>
-        <p className="mt-1.5 text-sm text-muted">
-          bleibt dir diesen Monat zum Ausgeben
-        </p>
+        <CollapsibleBlock
+          heading={<h2 className={tileHeading}>Saldo</h2>}
+          summary={
+            <>
+              <p className={`mt-1 ${bigNumber}`}>
+                {formatEuro(totals.restbetrag)}
+              </p>
+              <p className="mt-1.5 text-sm text-muted">
+                bleibt dir diesen Monat zum Ausgeben
+              </p>
+            </>
+          }
+        >
+          {/* Kleine Herleitung, damit die Zahl nachvollziehbar bleibt. */}
+          <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[13px]">
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted">Einnahmen</dt>
+              <dd className="font-semibold tabular-nums">
+                {formatEuro(totals.income)}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted">Ausgaben</dt>
+              <dd className="font-semibold tabular-nums">
+                {formatEuro(totals.ausgaben)}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted">Abzüge</dt>
+              <dd className="font-semibold tabular-nums">
+                {formatEuro(totals.ruecklagen)}
+              </dd>
+            </div>
+          </dl>
 
-        {/* Kleine Herleitung, damit die Zahl nachvollziehbar bleibt. */}
-        <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[13px]">
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">Einnahmen</dt>
-            <dd className="font-semibold tabular-nums">
-              {formatEuro(totals.income)}
-            </dd>
+          <div className="mt-4">
+            <p className="px-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+              Abzüge
+            </p>
+            {/* Balken wie bei den Ausgaben-Spalten – dieselbe Komponente,
+                dieselbe Rechnung (Anteil an den Einnahmen). */}
+            <BudgetColumn
+              section="RUECKLAGE"
+              entries={view.ruecklagen}
+              monthId={monthId}
+              share={share(totals.ruecklagen)}
+            />
           </div>
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">Ausgaben</dt>
-            <dd className="font-semibold tabular-nums">
-              {formatEuro(totals.ausgaben)}
-            </dd>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">Abzüge</dt>
-            <dd className="font-semibold tabular-nums">
-              {formatEuro(totals.ruecklagen)}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-auto pt-4">
-          <p className="px-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-            Abzüge
-          </p>
-          {/* Balken wie bei den Ausgaben-Spalten – dieselbe Komponente, dieselbe
-              Rechnung (Anteil an den Einnahmen). Ohne eigenen Spaltenkopf
-              landet er direkt unter der Überschrift. */}
-          <BudgetColumn
-            section="RUECKLAGE"
-            entries={view.ruecklagen}
-            monthId={monthId}
-            share={share(totals.ruecklagen)}
-          />
-        </div>
+        </CollapsibleBlock>
       </section>
 
       {/* --- Ausgaben: über die volle Breite ---

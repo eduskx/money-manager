@@ -22,8 +22,8 @@ import { IconChevronRight, IconTrash } from "@/components/icons";
 // unter dem Kopf einen Balken. Er steht bewusst AUSSERHALB des Klappbereichs –
 // so bleibt der Anteil auch bei eingeklappter Spalte sichtbar.
 //
-// `collapsible`: blendet auf dem Handy einen Pfeil im Kopf ein, mit dem sich
-// die Zeilen sanft ein- und ausklappen lassen. Ab md ist der Block immer offen.
+// `collapsible`: blendet einen Pfeil im Kopf ein, mit dem sich die Zeilen auf
+// jeder Breite sanft ein- und ausklappen lassen (Summe/Balken bleiben sichtbar).
 export function BudgetColumn({
   section,
   entries,
@@ -70,7 +70,7 @@ export function BudgetColumn({
               aria-label={
                 open ? `${column.name} einklappen` : `${column.name} ausklappen`
               }
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-faint transition hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:hidden"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-faint transition hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <IconChevronRight
                 className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${
@@ -108,10 +108,10 @@ export function BudgetColumn({
       )}
 
       {/* Klappbereich: grid-rows 1fr<->0fr animiert die Höhe ohne feste Werte.
-          Ab md immer offen. */}
+          Auf jeder Breite klappbar. */}
       <div
         id={bodyId}
-        className={`grid transition-all duration-300 ease-out motion-reduce:transition-none md:grid-rows-[1fr] ${
+        className={`grid transition-all duration-300 ease-out motion-reduce:transition-none ${
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
         }`}
       >

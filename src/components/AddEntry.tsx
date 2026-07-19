@@ -6,7 +6,8 @@ import { addEntry } from "@/lib/actions";
 import { IconPlus } from "@/components/icons";
 
 // Formular zum Anlegen einer neuen Zeile in einem Abschnitt. Nach dem Speichern
-// wird das Formular geleert, damit man direkt die nächste Zeile eintragen kann.
+// wird das Formular geleert – der Fokus wandert aber bewusst NICHT ins nächste
+// Feld: Der Cursor soll nach dem Anlegen nichts Neues anvisieren.
 //
 // `columnId` wird nur bei Ausgaben gesetzt – dort gehört jede Zeile in eine
 // konkrete (frei benannte) Spalte.
@@ -23,11 +24,7 @@ export function AddEntry({
 
   async function action(formData: FormData) {
     await addEntry(formData);
-    const form = formRef.current;
-    if (!form) return;
-    form.reset();
-    // Cursor zurück ins Namensfeld, damit man direkt die nächste Zeile tippt.
-    (form.elements.namedItem("label") as HTMLInputElement | null)?.focus();
+    formRef.current?.reset();
   }
 
   return (
