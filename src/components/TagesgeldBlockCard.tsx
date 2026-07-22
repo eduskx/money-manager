@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId } from "react";
 import { deleteCustomBlock, renameTagesgeldBlock } from "@/lib/actions";
 import { formatEuro } from "@/lib/format";
 import type { TagesgeldEntryView } from "@/lib/tagesgeld";
@@ -8,6 +8,7 @@ import { TagesgeldEntryRow } from "@/components/TagesgeldEntryRow";
 import { TagesgeldAddEntry } from "@/components/TagesgeldAddEntry";
 import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { useCollapse } from "@/components/useCollapse";
 import { IconChevronRight, IconTrash } from "@/components/icons";
 import { blockHeading, tile } from "@/components/styles";
 
@@ -32,6 +33,8 @@ export function TagesgeldBlockCard({
   headerRight,
   deletable = false,
   editableName = false,
+  collapseKey,
+  defaultOpen = true,
 }: {
   title: string;
   blockId: string;
@@ -41,8 +44,10 @@ export function TagesgeldBlockCard({
   headerRight?: ReactNode;
   deletable?: boolean;
   editableName?: boolean; // eigene Blöcke: Name über den Stift bearbeitbar
+  collapseKey: string; // Klapp-Schlüssel (seitenbezogen, von der Seite vergeben)
+  defaultOpen?: boolean; // Startzustand aus der DB
 }) {
-  const [open, setOpen] = useState(true);
+  const { open, toggle } = useCollapse(collapseKey, defaultOpen);
   const bodyId = useId();
 
   return (
@@ -67,7 +72,7 @@ export function TagesgeldBlockCard({
           {headerRight}
           <button
             type="button"
-            onClick={() => setOpen((o) => !o)}
+            onClick={toggle}
             aria-expanded={open}
             aria-controls={bodyId}
             aria-label={open ? `${title} einklappen` : `${title} ausklappen`}

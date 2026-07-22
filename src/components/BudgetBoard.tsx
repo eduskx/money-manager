@@ -31,13 +31,32 @@ export function BudgetBoard({
   totals,
   carry = null,
   carryLabel = "Vormonat",
+  scope,
+  collapsed = [],
 }: {
   monthId: string;
   view: MonthView;
   totals: Totals;
   carry?: number | null;
   carryLabel?: string;
+  // Der Klapp-Bereich: "dashboard" oder "vorlage". Er steckt in jedem Schlüssel,
+  // damit der Klappzustand seitenweit gilt – im Dashboard über alle Monate
+  // hinweg (die Monate hängen also zusammen), aber getrennt von der Vorlage.
+  scope: "dashboard" | "vorlage";
+  // Schlüssel der eingeklappten Blöcke (aus User.collapsed). Fehlt ein
+  // Schlüssel, ist der Block offen.
+  collapsed?: string[];
 }) {
+  // Offen, solange der Schlüssel NICHT in der Liste steht.
+  //
+  // Die Schlüssel tragen NUR den Bereich (scope), keinen monthId: So teilen sich
+  // alle Monate desselben Dashboards einen Zustand. Ausgaben-Spalten werden über
+  // ihren Namen verknüpft – die gleichnamige „Fixkosten"-Spalte klappt in jedem
+  // Monat gemeinsam.
+  const incomeKey = `${scope}:income`;
+  const saldoKey = `${scope}:saldo`;
+  const columnKey = (name: string) => `${scope}:col:${name}`;
+  const isOpen = (key: string) => !collapsed.includes(key);
   // Anteil an den Einnahmen – die eine Rechnung hinter allen Balken, egal ob
   // Ausgaben-Spalte oder Abzüge. Ohne Einnahmen gibt es keinen sinnvollen
   // Anteil; dann bleibt der Balken bei 0 %.
@@ -80,6 +99,8 @@ export function BudgetBoard({
       {/* --- Einnahmen: PC oben links, Handy unter dem Saldo --- */}
       <section className={`${tile} order-2 lg:order-1`}>
         <CollapsibleBlock
+          blockKey={incomeKey}
+          defaultOpen={isOpen(incomeKey)}
           heading={<h2 className={tileHeading}>Einnahmen</h2>}
           summary={<p className={`mt-1 ${bigNumber}`}>{formatEuro(totals.income)}</p>}
         >
@@ -120,6 +141,8 @@ export function BudgetBoard({
           mit ein, sie haben keinen eigenen mehr. */}
       <section className={`${tileAccent} order-1 lg:order-2`}>
         <CollapsibleBlock
+          blockKey={saldoKey}
+          defaultOpen={isOpen(saldoKey)}
           heading={<h2 className={tileHeading}>Saldo</h2>}
           summary={
             <>
@@ -221,6 +244,8 @@ export function BudgetBoard({
                   sum={sum}
                   share={share(sum)}
                   collapsible
+                  collapseKey={columnKey(c.name)}
+                  defaultOpen={isOpen(columnKey(c.name))}
                 />
               </div>
             );

@@ -15,12 +15,17 @@ export function AddEntry({
   monthId,
   section,
   columnId = null,
+  onSunken = false,
 }: {
   monthId: string;
   section: Section;
   columnId?: string | null;
+  onSunken?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  // In den Ausgaben-Spalten (bg-sunken) trägt auch dieses Feld dieselbe Fläche,
+  // damit es nicht auf bg-surface heraussticht – wie bei EntryRow.
+  const focusSurface = onSunken ? "focus:bg-sunken" : "focus:bg-surface";
 
   async function action(formData: FormData) {
     await addEntry(formData);
@@ -41,14 +46,14 @@ export function AddEntry({
         required
         placeholder="Neuer Eintrag"
         aria-label="Bezeichnung der neuen Zeile"
-        className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-accent focus:bg-surface"
+        className={`min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-accent ${focusSurface}`}
       />
       <input
         name="amount"
         inputMode="text"
         placeholder="0,00"
         aria-label="Betrag der neuen Zeile (Rechenformeln wie =60+30 erlaubt)"
-        className="w-20 shrink-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-right text-sm text-ink tabular-nums outline-none placeholder:text-faint focus:border-accent focus:bg-surface"
+        className={`w-20 shrink-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-right text-sm text-ink tabular-nums outline-none placeholder:text-faint focus:border-accent ${focusSurface}`}
       />
       <button
         type="submit"

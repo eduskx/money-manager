@@ -64,6 +64,13 @@ model User {
   // gewählt" unterscheidbar, und der Standard lässt sich später an genau
   // einer Stelle im Code ändern.
   palette      Palette?
+  // Welche Blöcke der Nutzer eingeklappt hat – gespeichert als Liste von
+  // Schlüsseln (z. B. "income", "saldo" oder die id einer Ausgaben-Spalte bzw.
+  // eines Sparkonto-Blocks). Bewusst nur die EINGEKLAPPTEN: Fehlt ein Schlüssel,
+  // ist der Block offen – das ist der Normalfall und braucht keinen Eintrag.
+  // Verwaiste Schlüssel (gelöschte Spalte/Block) schaden nicht, sie werden
+  // einfach ignoriert.
+  collapsed    String[] @default([])
   createdAt    DateTime @default(now())
 
   months          Month[]
@@ -89,10 +96,6 @@ model Month {
   year       Int? // null => Vorlage
   month      Int? // 1..12, null => Vorlage
   isTemplate Boolean  @default(false)
-  // true, sobald der Nutzer in diesem Monat selbst eine Zeile ändert. Nur
-  // unberührte (customized = false) Monate werden von Vorlagen-Änderungen
-  // automatisch mitgezogen – so gehen manuelle Eingaben nie verloren.
-  customized Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   userId  String

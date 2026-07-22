@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import type { Section } from "@prisma/client";
 import type { EntryView } from "@/lib/month";
 import { deleteExpenseColumn, renameExpenseColumn } from "@/lib/actions";
@@ -9,6 +9,7 @@ import { EntryRow } from "@/components/EntryRow";
 import { AddEntry } from "@/components/AddEntry";
 import { EditableName } from "@/components/EditableName";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { useCollapse } from "@/components/useCollapse";
 import { IconChevronRight, IconTrash } from "@/components/icons";
 
 // Eine Spalte/ein Abschnitt mit Einträgen, „Neuer Eintrag" und – optional –
@@ -24,6 +25,9 @@ import { IconChevronRight, IconTrash } from "@/components/icons";
 //
 // `collapsible`: blendet einen Pfeil im Kopf ein, mit dem sich die Zeilen auf
 // jeder Breite sanft ein- und ausklappen lassen (Summe/Balken bleiben sichtbar).
+// Der Klappzustand hängt dann unter `collapseKey` am Nutzer (den vergibt die
+// Seite – seitenbezogen, nicht pro Monat); `defaultOpen` ist der Startzustand
+// aus der DB.
 export function BudgetColumn({
   section,
   entries,
@@ -32,6 +36,8 @@ export function BudgetColumn({
   share,
   column,
   collapsible = false,
+  collapseKey = "",
+  defaultOpen = true,
 }: {
   section: Section;
   entries: EntryView[];
@@ -40,9 +46,19 @@ export function BudgetColumn({
   share?: number; // gesetzt => Anteilsbalken unter dem Kopf anzeigen
   column?: { id: string; name: string };
   collapsible?: boolean;
+  collapseKey?: string;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(true);
+  // Für die nicht-klappbaren Blöcke (Einnahmen, Abzüge) läuft der Hook mit einem
+  // leeren Schlüssel leer mit – ihr Pfeil steht ohnehin im umschließenden
+  // CollapsibleBlock.
+  const { open, toggle } = useCollapse(collapseKey, defaultOpen);
   const bodyId = useId();
+
+  // Ausgaben-Spalten sitzen auf `bg-sunken`; ihre Eingabefelder sollen dieselbe
+  // Fläche tragen statt auf `bg-surface` herauszustechen. Einnahmen/Abzüge
+  // haben keine Spalte und bleiben auf `bg-surface`.
+  const onSunken = Boolean(column);
 
   return (
     <div
@@ -64,7 +80,7 @@ export function BudgetColumn({
           {collapsible && (
             <button
               type="button"
-              onClick={() => setOpen((o) => !o)}
+              onClick={toggle}
               aria-expanded={open}
               aria-controls={bodyId}
               aria-label={
@@ -124,6 +140,7 @@ export function BudgetColumn({
                 label={e.label}
                 amount={e.amount}
                 formula={e.formula}
+                onSunken={onSunken}
               />
             ))}
           </div>
@@ -131,6 +148,7 @@ export function BudgetColumn({
             monthId={monthId}
             section={section}
             columnId={column?.id ?? null}
+            onSunken={onSunken}
           />
         </div>
       </div>

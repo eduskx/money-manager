@@ -323,6 +323,56 @@
   background: color-mix(in srgb, var(--ink) 14%, transparent);
 }
 
+/* Vorschau-Punkte fürs Farbwelten-Menü.
+   Sonderfall gegenüber allem darüber: Das Menü zeigt ALLE Welten gleichzeitig,
+   also braucht jede ihre Akzentfarbe unabhängig davon, welche Welt gerade aktiv
+   ist – die Rollen oben liefern immer nur die EINE aktive. Es sind dieselben
+   Werte wie --accent der jeweiligen Welt (hell/dunkel); ändert sich dort eine,
+   gehört sie hier mitgeändert. Das bleibt die einzige Ausnahme von „Farben nur
+   als Rolle". */
+.swatch-graphit {
+  background-color: #202024;
+}
+.dark .swatch-graphit {
+  background-color: #ececee;
+}
+.swatch-indigo {
+  background-color: #4b46d6;
+}
+.dark .swatch-indigo {
+  background-color: #7b76f0;
+}
+.swatch-marine {
+  background-color: #1c3f66;
+}
+.dark .swatch-marine {
+  background-color: #6ba3dd;
+}
+.swatch-salbei {
+  background-color: #4a7c59;
+}
+.dark .swatch-salbei {
+  background-color: #6faf80;
+}
+.swatch-pflaume {
+  background-color: #6d2c63;
+}
+.dark .swatch-pflaume {
+  background-color: #b061a4;
+}
+.swatch-sand {
+  background-color: #4a4136;
+}
+.dark .swatch-sand {
+  background-color: #cbb99a;
+}
+.swatch-rose {
+  background-color: #c03a63;
+}
+.dark .swatch-rose {
+  background-color: #ec7ba1;
+}
+
 body {
   background: var(--canvas);
   color: var(--ink);

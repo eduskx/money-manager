@@ -205,6 +205,8 @@ export default async function DashboardPage({
               totals={comp}
               carry={comp.hasPrev ? comp.carry : null}
               carryLabel={carryLabel}
+              scope="dashboard"
+              collapsed={profile?.collapsed ?? []}
             />
           ) : (
             <ImportTemplateTile year={year} month={month} />

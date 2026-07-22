@@ -1,7 +1,8 @@
 "use client";
 
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId } from "react";
 import { IconChevronRight } from "@/components/icons";
+import { useCollapse } from "@/components/useCollapse";
 
 // Ein Block mit ausklappbarem Körper und einem Pfeil im Kopf – für die Blöcke,
 // die keinen eigenen Spaltenkopf haben (Einnahmen, Abzüge). Ausgaben-Spalten
@@ -9,21 +10,26 @@ import { IconChevronRight } from "@/components/icons";
 // ebenfalls (TagesgeldBlockCard); dieselbe Mechanik, nur an einem Ort, an dem
 // der Kopf nicht editierbar ist.
 //
-// `heading`  – die Überschrift (bleibt immer sichtbar, neben dem Pfeil).
-// `summary`  – optional, bleibt beim Einklappen ebenfalls sichtbar (z. B. die
-//              große Einnahmen-Zahl). Nur der `children`-Körper klappt weg.
+// `heading`   – die Überschrift (bleibt immer sichtbar, neben dem Pfeil).
+// `summary`   – optional, bleibt beim Einklappen ebenfalls sichtbar (z. B. die
+//               große Einnahmen-Zahl). Nur der `children`-Körper klappt weg.
+// `blockKey`  – stabiler Schlüssel, unter dem der Klappzustand am Nutzer hängt
+//               (z. B. "income", "saldo").
+// `defaultOpen` – Startzustand aus der DB (Schlüssel nicht eingeklappt = offen).
 export function CollapsibleBlock({
   heading,
   summary,
+  blockKey,
   defaultOpen = true,
   children,
 }: {
   heading: ReactNode;
   summary?: ReactNode;
+  blockKey: string;
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const { open, toggle } = useCollapse(blockKey, defaultOpen);
   const bodyId = useId();
 
   return (
@@ -31,7 +37,7 @@ export function CollapsibleBlock({
       <div className="flex min-w-0 items-center gap-1">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggle}
           aria-expanded={open}
           aria-controls={bodyId}
           aria-label={open ? "Block einklappen" : "Block ausklappen"}
