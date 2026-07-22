@@ -133,7 +133,6 @@ type SeedMonth = {
   year: number | null; // null => Vorlage
   month: number | null;
   isTemplate: boolean;
-  customized: boolean;
   income: SeedEntry[];
   columns: SeedColumn[];
   ruecklagen: SeedEntry[];
@@ -155,10 +154,10 @@ function demoMonths(): SeedMonth[] {
   const now = new Date();
   const prev = previousMonth(now.getFullYear(), now.getMonth() + 1);
 
-  // Vorlage und aktueller Monat teilen sich denselben Inhalt – Pflicht, kein
-  // Zufall: Ein Monat mit customized = false MUSS die Vorlage spiegeln, sonst
-  // würde ihn der nächste Vorlagen-Sync überschreiben und die Demo-Zahlen
-  // sprängen unter den Augen des Betrachters um.
+  // Vorlage und aktueller Monat teilen sich denselben Inhalt – so sieht der
+  // Gast beim Login einen gefüllten Monat, und die Vorlage passt dazu. (Beide
+  // sind jetzt eigenständige Kopien: Die Vorlage wirkt nicht mehr rückwirkend
+  // auf bestehende Monate.)
   const templateContent = {
     income: [{ label: "Gehalt", amount: 2450 }],
     columns: [
@@ -186,7 +185,6 @@ function demoMonths(): SeedMonth[] {
       year: null,
       month: null,
       isTemplate: true,
-      customized: false,
       ...templateContent,
     },
 
@@ -197,19 +195,16 @@ function demoMonths(): SeedMonth[] {
       year: now.getFullYear(),
       month: now.getMonth() + 1,
       isTemplate: false,
-      customized: false,
       ...templateContent,
     },
 
-    // Der Vormonat – „schon bearbeitet" (customized), damit ihn der
-    // Vorlagen-Sync in Ruhe lässt. Er existiert vor allem für EIN Feature:
-    // Sein Restbetrag taucht im aktuellen Monat als „Vormonat" auf, ohne
-    // irgendwo gespeichert zu sein (er wird gerechnet).
+    // Der Vormonat. Er existiert vor allem für EIN Feature: Sein Restbetrag
+    // taucht im aktuellen Monat als „Vormonat" auf, ohne irgendwo gespeichert zu
+    // sein (er wird gerechnet).
     {
       year: prev.year,
       month: prev.month,
       isTemplate: false,
-      customized: true,
       income: [{ label: "Gehalt", amount: 2450 }],
       columns: [
         { name: "Fixkosten", entries: FIXKOSTEN },
@@ -252,7 +247,6 @@ async function createMonth(
       year: seed.year,
       month: seed.month,
       isTemplate: seed.isTemplate,
-      customized: seed.customized,
     },
   });
 

@@ -19,18 +19,28 @@ import { IconCheck, IconTrash } from "@/components/icons";
 // Klickt man hinein, klappt darunter ein breites Feld auf – die „Formelzeile" –
 // in dem man die Rechnung bequem eintippt (z. B. „=5,70+10,20") und das
 // Ergebnis live mitläuft. Enter/Haken übernimmt, Escape verwirft.
+// `onSunken`: In den Ausgaben-Spalten (Fläche `bg-sunken`) sollen die
+// aufklappenden Eingabefelder dieselbe Fläche tragen wie die Spalte, statt auf
+// `bg-surface` herauszustechen – wie bei den normalen Blöcken, wo Feld und Block
+// ohnehin `bg-surface` teilen.
 export function EntryRow({
   id,
   label,
   amount,
   formula,
+  onSunken = false,
 }: {
   id: string;
   label: string;
   amount: number;
   formula: string | null;
+  onSunken?: boolean;
 }) {
   const [, startTransition] = useTransition();
+  // Die Fläche, auf der der Block sitzt – als Fokus-Hintergrund der Felder und
+  // als Füllung der Formelzeile.
+  const surface = onSunken ? "bg-sunken" : "bg-surface";
+  const focusSurface = onSunken ? "focus:bg-sunken" : "focus:bg-surface";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   // Ob gerade IRGENDEIN Feld dieser Zeile den Fokus hat -> Haken statt Mülleimer.
@@ -132,7 +142,7 @@ export function EntryRow({
           onKeyDown={labelKey}
           aria-label="Bezeichnung"
           title={label}
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-ink outline-none hover:border-line focus:border-accent focus:bg-surface"
+          className={`min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-ink outline-none hover:border-line focus:border-accent ${focusSurface}`}
         />
         {/* Die Zelle: zeigt das Ergebnis, ist selbst nicht tippbar (readOnly) –
             getippt wird in der Formelzeile darunter. */}
@@ -151,7 +161,7 @@ export function EntryRow({
           inputMode="none"
           aria-label="Betrag in Euro – zum Bearbeiten anklicken"
           title={formula ? `Formel: ${formula}` : undefined}
-          className="w-20 shrink-0 cursor-pointer rounded-md border border-transparent bg-transparent px-2 py-2 text-right text-sm text-ink tabular-nums outline-none hover:border-line focus:border-accent focus:bg-surface"
+          className={`w-20 shrink-0 cursor-pointer rounded-md border border-transparent bg-transparent px-2 py-2 text-right text-sm text-ink tabular-nums outline-none hover:border-line focus:border-accent ${focusSurface}`}
         />
 
         {rowFocused ? (
@@ -182,7 +192,7 @@ export function EntryRow({
 
       {/* Die aufklappende Formelzeile: breites Feld + Live-Ergebnis. */}
       {editing && (
-        <div className="rounded-md border border-line bg-surface p-2">
+        <div className={`rounded-md border border-line ${surface} p-2`}>
           <input
             ref={bigRef}
             value={draft}

@@ -11,7 +11,6 @@ import { prisma } from "@/lib/prisma";
 import { auth, signIn, signOut } from "@/auth";
 import { readAmountInput } from "@/lib/calc";
 import {
-  applyTemplateToMonths,
   importMonthFromTemplate,
   isMonthAfter,
   MAX_EXPENSE_COLUMNS,
@@ -190,36 +189,48 @@ export async function setPalette(palette: Palette) {
   revalidatePath("/", "layout");
 }
 
+// ---------------------------------------------------------------------------
+// Klappzustand der Blöcke
+// ---------------------------------------------------------------------------
+
+// Merkt sich am Nutzer, ob ein Block ein- oder ausgeklappt ist.
+//
+// `key` ist ein stabiler Schlüssel: "income"/"saldo" für die festen Blöcke, die
+// id einer Ausgaben-Spalte bzw. eines Sparkonto-Blocks für die flexiblen.
+//
+// Bewusst OHNE revalidatePath: Der Klappzustand ist reine UI-Erinnerung. Die
+// Oberfläche hat lokal (optimistisch) schon umgeschaltet – ein Re-Render würde
+// nur flackern und nichts gewinnen. Gespeichert wird nur für den nächsten
+// Seitenaufruf.
+export async function setBlockCollapsed(key: string, collapsed: boolean) {
+  const userId = await requireUserId();
+
+  const k = key.trim();
+  if (!k) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { collapsed: true },
+  });
+  if (!user) return;
+
+  // Set statt Array: doppelte Schlüssel gibt es so gar nicht erst, und
+  // add/delete ist genau die Sprache, die wir brauchen.
+  const set = new Set(user.collapsed);
+  if (collapsed) set.add(k);
+  else set.delete(k);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { collapsed: Array.from(set) },
+  });
+}
+
 // Nach einer Änderung: Monatsansicht UND Vorlage neu rendern. Der Eintrag kann
 // zu beidem gehören; beide Pfade zu revalidieren ist günstig und robust.
 function revalidateBudget() {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/vorlage");
-}
-
-// Wird nach jeder Eintrags-Änderung aufgerufen:
-//  - War es die Vorlage? Dann die Vorlage auf passende Monate anwenden.
-//  - War es ein echter Monat? Dann ihn als „bearbeitet" markieren, damit ihn
-//    künftige Vorlagen-Änderungen nicht mehr überschreiben.
-//
-// `alreadyMarked`: Manche Aufrufer setzen `customized` schon selbst – im selben
-// Schreibvorgang, mit dem sie die Zeile anlegen. Die sparen sich damit eine
-// eigene Rundreise und sagen hier Bescheid, damit sie nicht doppelt läuft.
-async function afterEntryChange(
-  userId: string,
-  monthId: string,
-  isTemplate: boolean,
-  opts: { alreadyMarked?: boolean } = {},
-) {
-  if (isTemplate) {
-    await applyTemplateToMonths(userId);
-  } else if (!opts.alreadyMarked) {
-    await prisma.month.update({
-      where: { id: monthId },
-      data: { customized: true },
-    });
-  }
-  revalidateBudget();
 }
 
 export async function addEntry(formData: FormData) {
@@ -249,11 +260,11 @@ export async function addEntry(formData: FormData) {
     isExpense
       ? prisma.expenseColumn.findFirst({
           where: { id: columnId!, month: { id: monthId, userId } },
-          select: { month: { select: { isTemplate: true } } },
+          select: { id: true },
         })
       : prisma.month.findFirst({
           where: { id: monthId, userId },
-          select: { isTemplate: true },
+          select: { id: true },
         }),
     prisma.entry.aggregate({
       where: isExpense ? { monthId, columnId } : { monthId, section: sectionRaw },
@@ -262,47 +273,22 @@ export async function addEntry(formData: FormData) {
   ]);
 
   if (!owner) return;
-  const isTemplate =
-    "month" in owner ? owner.month.isTemplate : owner.isTemplate;
 
   const position = (last._max.position ?? -1) + 1;
 
-  // Zeile anlegen UND den Monat als bearbeitet markieren – in einem einzigen
-  // verschachtelten Schreibvorgang statt in zweien. Bei der Vorlage bleibt
-  // `customized` unangetastet (dort gibt es das Flag nicht sinnvoll), deshalb
-  // die Fallunterscheidung.
-  if (isTemplate) {
-    await prisma.entry.create({
-      data: {
-        monthId,
-        section: sectionRaw,
-        columnId: isExpense ? columnId : null,
-        label,
-        amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
-        formula,
-        position,
-      },
-    });
-  } else {
-    await prisma.month.update({
-      where: { id: monthId },
-      data: {
-        customized: true,
-        entries: {
-          create: {
-            section: sectionRaw,
-            columnId: isExpense ? columnId : null,
-            label,
-            amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
-            formula,
-            position,
-          },
-        },
-      },
-    });
-  }
+  await prisma.entry.create({
+    data: {
+      monthId,
+      section: sectionRaw,
+      columnId: isExpense ? columnId : null,
+      label,
+      amount: new Prisma.Decimal((amount ?? 0).toFixed(2)),
+      formula,
+      position,
+    },
+  });
 
-  await afterEntryChange(userId, monthId, isTemplate, { alreadyMarked: true });
+  revalidateBudget();
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +304,7 @@ export async function addExpenseColumn(formData: FormData) {
 
   const month = await prisma.month.findFirst({
     where: { id: monthId, userId },
-    select: { id: true, isTemplate: true },
+    select: { id: true },
   });
   if (!month) return;
 
@@ -334,7 +320,7 @@ export async function addExpenseColumn(formData: FormData) {
     data: { monthId, name, position: (last._max.position ?? -1) + 1 },
   });
 
-  await afterEntryChange(userId, monthId, month.isTemplate);
+  revalidateBudget();
 }
 
 export async function renameExpenseColumn(formData: FormData) {
@@ -346,13 +332,13 @@ export async function renameExpenseColumn(formData: FormData) {
 
   const column = await prisma.expenseColumn.findFirst({
     where: { id, month: { userId } },
-    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+    select: { id: true },
   });
   if (!column) return;
 
   await prisma.expenseColumn.update({ where: { id: column.id }, data: { name } });
 
-  await afterEntryChange(userId, column.monthId, column.month.isTemplate);
+  revalidateBudget();
 }
 
 export async function deleteExpenseColumn(formData: FormData) {
@@ -363,14 +349,14 @@ export async function deleteExpenseColumn(formData: FormData) {
 
   const column = await prisma.expenseColumn.findFirst({
     where: { id, month: { userId } },
-    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+    select: { id: true },
   });
   if (!column) return;
 
   // Die Einträge der Spalte verschwinden per Cascade mit.
   await prisma.expenseColumn.delete({ where: { id: column.id } });
 
-  await afterEntryChange(userId, column.monthId, column.month.isTemplate);
+  revalidateBudget();
 }
 
 export async function updateEntry(formData: FormData) {
@@ -382,10 +368,10 @@ export async function updateEntry(formData: FormData) {
   const { amount, formula } = readAmountInput(rawAmount);
   if (!id) return;
 
-  // Eintrag (user-scoped) samt zugehörigem Monat holen.
+  // Eintrag user-scoped holen (Besitzprüfung über die Relation).
   const entry = await prisma.entry.findFirst({
     where: { id, month: { userId } },
-    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+    select: { id: true },
   });
   if (!entry) return;
 
@@ -398,7 +384,7 @@ export async function updateEntry(formData: FormData) {
     },
   });
 
-  await afterEntryChange(userId, entry.monthId, entry.month.isTemplate);
+  revalidateBudget();
 }
 
 export async function deleteEntry(formData: FormData) {
@@ -409,13 +395,13 @@ export async function deleteEntry(formData: FormData) {
 
   const entry = await prisma.entry.findFirst({
     where: { id, month: { userId } },
-    select: { id: true, monthId: true, month: { select: { isTemplate: true } } },
+    select: { id: true },
   });
   if (!entry) return;
 
   await prisma.entry.delete({ where: { id: entry.id } });
 
-  await afterEntryChange(userId, entry.monthId, entry.month.isTemplate);
+  revalidateBudget();
 }
 
 // ---------------------------------------------------------------------------
@@ -487,15 +473,13 @@ export async function deleteCurrentMonth(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
-// Die Vorlage leeren. Da unberührte Monate die Vorlage spiegeln, werden diese
-// dadurch ebenfalls geleert; bearbeitete Monate (customized = true) bleiben.
 // Leert die Vorlage vollständig: Einträge UND Ausgaben-Spalten.
 //
 // Danach hat die Vorlage keine Spalte mehr – auch keine „Fixkosten". Das ist
 // Absicht: „leeren" soll leeren. Eine neue legst du über „Neue Spalte" an.
 //
-// Der anschließende Sync trägt das auf alle unberührten Monate weiter; die
-// verlieren ihre Spalten also mit. Bearbeitete Monate bleiben unberührt.
+// Bestehende Monate bleiben unberührt: Die Vorlage ist nur die Grundlage für
+// NEU angelegte Monate, sie wirkt nicht rückwirkend.
 export async function clearTemplate() {
   const userId = await requireUserId();
 
@@ -517,7 +501,6 @@ export async function clearTemplate() {
     });
   }
 
-  await applyTemplateToMonths(userId);
   revalidateBudget();
 }
 

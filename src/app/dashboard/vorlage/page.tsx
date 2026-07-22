@@ -59,10 +59,11 @@ export default async function VorlagePage() {
 
         <div className="mt-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
           <p>
-            Änderungen hier werden automatisch auf alle Monate übertragen, die du{" "}
-            <strong>noch nicht selbst bearbeitet</strong> hast (auch bereits
-            angelegte, leere Monate). Sobald du in einem Monat etwas änderst,
-            bleibt dieser von der Vorlage unabhängig.
+            Die Vorlage ist die Grundlage für neue Monate: Ein Monat übernimmt
+            sie in dem Moment, in dem du ihn über{" "}
+            <strong>„Vorlage importieren“</strong> anlegst. Bestehende Monate
+            bleiben unberührt – Änderungen hier wirken sich nicht rückwirkend auf
+            sie aus.
           </p>
           {/* Der Text sagt, was der Schalter daneben gerade bewirkt – sonst
               würde hier eine Regel behauptet, die abgeschaltet ist. */}
@@ -85,7 +86,7 @@ export default async function VorlagePage() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <form action={clearTemplate}>
               <ConfirmSubmit
-                message="Vorlage wirklich leeren? Alle Einträge UND alle Ausgaben-Spalten werden gelöscht. Alle unberührten Monate werden dadurch ebenfalls geleert. Bearbeitete Monate bleiben erhalten."
+                message="Vorlage wirklich leeren? Alle Einträge UND alle Ausgaben-Spalten der Vorlage werden gelöscht. Bestehende Monate bleiben unberührt."
                 className="inline-flex h-10 items-center rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
               >
                 Vorlage leeren
@@ -97,7 +98,13 @@ export default async function VorlagePage() {
 
         {/* Gleicher Aufbau wie ein Monat */}
         <div className="mt-6">
-          <BudgetBoard monthId={template.id} view={view} totals={totals} />
+          <BudgetBoard
+            monthId={template.id}
+            view={view}
+            totals={totals}
+            scope="vorlage"
+            collapsed={user.collapsed}
+          />
         </div>
       </div>
     </main>

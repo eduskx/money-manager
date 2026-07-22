@@ -21,13 +21,21 @@ benennbare **Ausgaben-Spalten** und ein **Saldo** („was bleibt"), dazu eine
 ## Umgebung & Verifikation — WICHTIG
 
 - **Verifikation = `npm run lint` + `npm run build`.** Beides muss grün sein.
-- **Kein Live-Klicktest durch den Assistenten**: Die App braucht Login,
-  Passwörter gibt der Assistent nicht ein. Klick-Tests macht immer der Nutzer.
+- **Live-Klicktest geht über den Gast-Login.** Echte Konten brauchen ein
+  Passwort (gibt der Assistent nicht ein), der Knopf „Als Gast anmelden" aber
+  nicht — darüber kann der Assistent das Dashboard selbst öffnen und prüfen (so
+  wurde der Swatch-Bug gefunden). Konto-Spezifisches testet weiterhin der Nutzer.
 - **`prisma generate` scheitert mit `EPERM`, solange `next dev` läuft** (die
   Engine-DLL ist gesperrt). Die TS-Typen werden trotzdem erneuert, deshalb
   laufen `lint`/`build` weiter — aber der **laufende Dev-Server behält den alten
   Client im Speicher**. Symptom: `prisma.<model> is undefined` zur Laufzeit.
   Lösung: Dev-Server stoppen → `npx prisma migrate dev` → neu starten.
+- **Turbopack-Dev cached CSS per Inhalts-Hash.** Neue *handgeschriebene* Regeln
+  in `globals.css` (keine Tailwind-Utilities) übernimmt der laufende Dev-Server
+  manchmal nicht — HMR greift nicht, und `touch` hilft nicht (gleicher Inhalt →
+  gleicher Hash → Cache-Treffer). `lint`/`build` sind trotzdem grün, weil der
+  Build sauber neu kompiliert. Lösung: Dev-Server neu starten. So verschwand der
+  „Vorschau-Punkte zeigen nichts"-Bug.
 - **Nach dem Löschen von Routen `.next` leeren**, sonst schlägt der Typecheck
   mit veralteten generierten Typen fehl.
 - Aus manchen Sessions ist `neon.tech` per Egress-Policy geblockt → dort keine
@@ -44,8 +52,9 @@ User ─┬─ Month ─┬─ Entry ── (columnId) ── ExpenseColumn
 ```
 
 - **`Month`** = ein Budget-Monat **oder die Vorlage** (`isTemplate`, dann
-  `year/month = null`). Flag **`customized`**: sobald der Nutzer im Monat etwas
-  ändert → `true` → der Monat ist dauerhaft vor dem Vorlagen-Sync geschützt.
+  `year/month = null`). Jeder Monat ist eine eigenständige Kopie: Eine
+  Vorlage-Änderung wirkt **nicht** rückwirkend (kein Sync, kein `customized`-Flag
+  mehr).
 - **`Entry`**: `section ∈ {INCOME, EXPENSE, RUECKLAGE}`. Bei `EXPENSE` steht die
   konkrete Spalte in **`columnId`** (die Spalten sind KEIN Enum mehr).
   `amount Decimal(12,2)`, optional **`formula`** (siehe unten).
@@ -69,10 +78,11 @@ User ─┬─ Month ─┬─ Entry ── (columnId) ── ExpenseColumn
   ziehen alle folgenden automatisch nach. In der UI eine nicht-editierbare
   Zeile im Einnahmen-Block; kommt der Übertrag über eine Lücke, heißt sie
   nicht „Vormonat", sondern „Übertrag aus ‹Monat Jahr›" (`carryFrom`).
-- **Vorlagen-Sync (`applyTemplateToMonths`)**: Regel = **jeder Monat mit
-  `customized === false` spiegelt immer die aktuelle Vorlage** (Spalten UND
-  Einträge, vergangen wie zukünftig, füllt auch leere Monate). Ausgelöst
-  automatisch bei jeder Vorlage-Änderung (`afterEntryChange` in `actions.ts`).
+- **Kein Vorlagen-Sync (mehr).** Die Vorlage ist ausschließlich die **Grundlage
+  für neu importierte Monate** (`importMonthFromTemplate`). Bestehende Monate
+  bleiben unberührt; wer die neue Vorlage in einem Monat will, **löscht ihn und
+  importiert neu**. Früher spiegelten unberührte Monate die Vorlage automatisch
+  (`applyTemplateToMonths` + `customized`-Flag) — beides ist entfernt.
 - **Monate entstehen NICHT mehr automatisch.** Ein nie erzeugter Monat zeigt
   eine gestrichelte Kachel mit „Vorlage importieren" (`ImportTemplateTile`);
   erst der Klick ruft `importMonthFromTemplate` (`buildCopy`,
@@ -120,6 +130,16 @@ User ─┬─ Month ─┬─ Entry ── (columnId) ── ExpenseColumn
     Neue umbenennbare Namen IMMER darüber lösen, nicht neu bauen.
 - **Anlegen — auch eine Regel:** Button legt sofort an („Neue Spalte", „Neues
   Konto", „Neuer Block"), benannt wird danach per Stift. Kein Namensfeld vorab.
+- **Klappzustand der Blöcke** liegt am Nutzer (`User.collapsed String[]`,
+  gespeichert werden nur die *eingeklappten* Schlüssel; fehlt einer → offen).
+  Die Schlüssel sind **seitenbezogen**, nicht pro Monat: `dashboard:…`,
+  `vorlage:…`, `sparkonten:…`. So teilen sich im Dashboard alle Monate einen
+  Zustand (Ausgaben-Spalten über ihren **Namen** verknüpft, Sparkonto-Blöcke
+  über ihre Art `kind` bzw. bei eigenen über ihren Namen). Eine Komponente
+  dafür: der Hook **`src/components/useCollapse.ts`** (optimistisch + Server-
+  Action `setBlockCollapsed`, bewusst **ohne** `revalidatePath`). CollapsibleBlock,
+  BudgetColumn und TagesgeldBlockCard nehmen `collapseKey` + `defaultOpen` von
+  der jeweiligen Seite.
 - **Layout:** alle Flex-/Grid-Elemente in Eintragszeilen brauchen **`min-w-0`**,
   sonst überlaufen die Ausgaben-Spalten ineinander (war ein echter Bug).
 - Destruktives immer mit `ConfirmSubmit` (Rückfrage) und rot abgesetzt.
@@ -159,6 +179,18 @@ kein `bg-gray-50`, kein `emerald`.
   einmal unsichtbar geworden. Nicht „aufräumen".
 - **`HeaderTools`** rendert Theme + Palette + Profil und holt die Farbwelt
   selbst aus der DB. Kopfzeilen immer darüber, nicht nachbauen.
+- **Farbwelten-Wähler = Dropdown** (`PaletteToggle`, war früher ein
+  Durchschalt-Knopf), mit einem **Vorschau-Punkt je Welt**. Diese Punkte sind
+  die **einzige weitere Ausnahme** von „Farbe nur als Rolle": Weil das Menü alle
+  7 Welten gleichzeitig zeigt, stehen ihre Akzentwerte als `.swatch-<welt>`-
+  Klassen (hell **und** dunkel) in `globals.css`. Ändert sich ein `--accent`,
+  gehört der passende Swatch mitgeändert. **Nicht** in eine Komponente ziehen,
+  und nicht als „toten Code" entfernen.
+- **Eingabefelder tragen die Fläche ihres Blocks.** In den Ausgaben-Spalten
+  (`bg-sunken`) bekommen `EntryRow`/`AddEntry` per **`onSunken`** denselben
+  Hintergrund statt `bg-surface` — sonst stäche das aufklappende Bearbeitungsfeld
+  hell heraus. In den normalen Blöcken (Einnahmen/Abzüge, `bg-surface`) bleibt es
+  bei `bg-surface`.
 
 ## Routen
 
@@ -174,7 +206,14 @@ kein `bg-gray-50`, kein `emerald`.
 
 - **Gemerged in `main`:** PR #2 (Excel-Budgetlogik), #3 (Profil),
   #4 + #6 (flexible Spalten), #5 (Sparkonten).
-- **Offen:** Branch `design` — Bento-Layout + Farbwelten.
+- **Farbwelten + Bento-Layout sind umgesetzt** (7 Welten, hell/dunkel,
+  Palette-Dropdown mit Vorschau-Punkten) — der frühere `design`-Branch ist damit
+  abgeschlossen.
+- **Aktueller Branch `small-additions`** (diese Session): Klappzustand pro Konto
+  gespeichert (`User.collapsed`, seitenbezogen), Farbwelten-Wähler als Dropdown
+  mit Vorschau-Punkten, Eingabefeld-Fläche in Ausgaben-Spalten (`onSunken`), und
+  die **Vorlage wirkt nicht mehr rückwirkend** (automatischer Sync +
+  `customized`-Flag entfernt; ein Monat übernimmt die Vorlage nur beim Import).
 - **Bento-Layout ist umgesetzt** (nicht mehr nur Mockup): PC = Einnahmen oben
   links, Saldo oben rechts, Ausgaben volle Breite darunter. Handy = Saldo,
   Einnahmen, Ausgaben. Anteilsbalken (Anteil an den Einnahmen) unter den
@@ -184,13 +223,13 @@ kein `bg-gray-50`, kein `emerald`.
   Token-Flow — bewusst vertagt.
 - **Deployment** wurde angefangen, aber nicht abgeschlossen (Vercel + Neon;
   nötig wären `DATABASE_URL` und `AUTH_SECRET` als Env-Vars).
-- **Gast-Modus geplant, eigener Branch folgt.** Zweck: Recruitern die App ohne
-  Registrierung zeigen. Entschieden gegen eine reine localStorage-Lösung (wäre
-  eine zweite Implementierung der halben App und würde ausgerechnet die
-  Server-Logik verstecken, die das Projekt interessant macht). Empfehlung:
-  anonymes Konto in der DB (`isGuest`), **mit Beispieldaten** (ein leerer Gast
-  zeigt nichts) und Lazy-Cleanup alter Gäste beim nächsten Gast-Login — kein
-  Cron nötig. Speicher ist kein Argument: ~10 KB pro Gast.
+- **Gast-Modus ist umgesetzt** (`src/lib/guest.ts`). Zweck: Recruitern die App
+  ohne Registrierung zeigen. Entschieden gegen eine reine localStorage-Lösung
+  (wäre eine zweite Implementierung der halben App und würde ausgerechnet die
+  Server-Logik verstecken, die das Projekt interessant macht). Umsetzung wie
+  empfohlen: anonymes Konto in der DB (`isGuest`), **mit Beispieldaten** (ein
+  leerer Gast zeigt nichts) und Lazy-Cleanup alter Gäste beim nächsten
+  Gast-Login — kein Cron nötig. Speicher ist kein Argument: ~10 KB pro Gast.
 - **Nebenwirkung des Farbwelten-Umbaus:** `/login`, `/register` und
   `/_not-found` sind von statisch auf dynamisch gewechselt, weil das
   Root-Layout die Session für `data-palette` liest. Kosten: ein Cookie-Check

@@ -33,6 +33,7 @@ export const getSessionUser = cache(async () => {
       email: true,
       palette: true,
       carryOver: true,
+      collapsed: true,
       isGuest: true,
       createdAt: true,
     },

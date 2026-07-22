@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { TagesgeldKind } from "@prisma/client";
 
 import { auth } from "@/auth";
+import { getSessionUser } from "@/lib/user";
 import {
   computeTagesgeldTotals,
   getOrCreateTagesgeldBlocks,
@@ -51,6 +52,19 @@ export default async function SparkontoPage({
 
   const blocks = await getOrCreateTagesgeldBlocks(account.id);
   const totals = computeTagesgeldTotals(blocks);
+
+  // Klappzustand der Blöcke (aus User.collapsed). Der User kostet dank
+  // getSessionUser keine eigene Abfrage – das Layout hat ihn in derselben
+  // Anfrage schon geholt. Offen, solange der Schlüssel nicht drinsteht.
+  //
+  // Die Schlüssel liegen seitenweit unter "sparkonten:" – der Klappzustand gilt
+  // also fürs gesamte Sparkonten (über alle Konten hinweg), aber nur dort.
+  // Standardblöcke hängen an ihrer Art (kind), eigene Blöcke an ihrem Namen.
+  const profile = await getSessionUser();
+  const collapsed = profile?.collapsed ?? [];
+  const isOpen = (key: string) => !collapsed.includes(key);
+  const kindKey = (kind: TagesgeldKind) => `sparkonten:${kind}`;
+  const customKey = (name: string) => `sparkonten:custom:${name}`;
 
   const einnahmen = blocks.find((b) => b.kind === TagesgeldKind.EINNAHMEN);
   const ausgaben = blocks.find((b) => b.kind === TagesgeldKind.AUSGABEN);
@@ -131,6 +145,8 @@ export default async function SparkontoPage({
               entries={einnahmenYear}
               sum={sumEntries(einnahmenYear)}
               addYear={year}
+              collapseKey={kindKey(TagesgeldKind.EINNAHMEN)}
+              defaultOpen={isOpen(kindKey(TagesgeldKind.EINNAHMEN))}
               headerRight={
                 <YearSwitcher
                   accountId={account.id}
@@ -148,6 +164,8 @@ export default async function SparkontoPage({
               entries={ausgabenYear}
               sum={sumEntries(ausgabenYear)}
               addYear={year}
+              collapseKey={kindKey(TagesgeldKind.AUSGABEN)}
+              defaultOpen={isOpen(kindKey(TagesgeldKind.AUSGABEN))}
               headerRight={
                 <YearSwitcher
                   accountId={account.id}
@@ -164,6 +182,8 @@ export default async function SparkontoPage({
               blockId={zurueck.id}
               entries={zurueck.entries}
               sum={sumEntries(zurueck.entries)}
+              collapseKey={kindKey(TagesgeldKind.ZURUECKGELEGT)}
+              defaultOpen={isOpen(kindKey(TagesgeldKind.ZURUECKGELEGT))}
             />
           )}
 
@@ -176,6 +196,8 @@ export default async function SparkontoPage({
               sum={sumEntries(b.entries)}
               deletable
               editableName
+              collapseKey={customKey(b.name)}
+              defaultOpen={isOpen(customKey(b.name))}
             />
           ))}
 
